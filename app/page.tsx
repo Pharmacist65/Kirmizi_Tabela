@@ -17,6 +17,7 @@ import { ActionResultPanel } from "@/components/ActionResultPanel";
 import { GameModules, type ModuleId } from "@/components/GameModules";
 import { DailyActionPanel } from "@/components/DailyActionPanel";
 import { DayReportPanel } from "@/components/DayReportPanel";
+import { FeedbackDock } from "@/components/FeedbackDock";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LivePharmacyScene } from "@/components/LivePharmacyScene";
 import { LocationProfile } from "@/components/LocationProfile";
@@ -43,6 +44,7 @@ import {
   giveStaffRaise,
   hireStaff,
   paySupplierDebt,
+  purchasePaymentLabels,
   runChamberApproval,
   runSgkControl,
   sellOnMarketplace
@@ -50,7 +52,24 @@ import {
 import type { ActionDelta, ActionResult, DailyActionId, GameState, PurchasePayment, StartProfile, TimedTask } from "@/game/types";
 import { isFirebaseConfigured } from "@/firebase/config";
 
-const storageKey = "kirmizi-tabela-v4-state";
+const legacyStorageKey = "kirmizi-tabela-v4-state";
+const storageKey = "kirmizi-tabela-v5-save";
+
+type SavedGame = {
+  version: 5;
+  state: GameState;
+  openingTasks: TimedTask[];
+  hasGame: boolean;
+};
+
+function createSavePayload(state: GameState, openingTasks: TimedTask[], hasGame: boolean): SavedGame {
+  return {
+    version: 5,
+    state,
+    openingTasks,
+    hasGame
+  };
+}
 
 export default function Home() {
   const [state, setState] = useState<GameState>(() => createInitialState());
@@ -61,14 +80,17 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(storageKey);
+    const saved = window.localStorage.getItem(storageKey) ?? window.localStorage.getItem(legacyStorageKey);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as Partial<GameState>;
-        const base = createInitialState(parsed.scenarioId);
-        setState({ ...base, ...parsed, shelfFocus: parsed.shelfFocus ?? base.shelfFocus });
-        setOpeningTasks(createOpeningTasks());
-        setHasGame(true);
+        const parsed = JSON.parse(saved) as Partial<SavedGame> | Partial<GameState>;
+        const savedState = "state" in parsed && parsed.state ? parsed.state : (parsed as Partial<GameState>);
+        const savedTasks = "openingTasks" in parsed ? parsed.openingTasks : null;
+        const base = createInitialState(savedState.scenarioId);
+        setState({ ...base, ...savedState, shelfFocus: savedState.shelfFocus ?? base.shelfFocus });
+        setOpeningTasks(savedTasks?.length ? savedTasks : createOpeningTasks());
+        setHasGame("hasGame" in parsed ? Boolean(parsed.hasGame) : true);
+        window.localStorage.removeItem(legacyStorageKey);
       } catch {
         setState(createInitialState());
       }
@@ -78,9 +100,9 @@ export default function Home() {
 
   useEffect(() => {
     if (hydrated && hasGame) {
-      window.localStorage.setItem(storageKey, JSON.stringify(state));
+      window.localStorage.setItem(storageKey, JSON.stringify(createSavePayload(state, openingTasks, hasGame)));
     }
-  }, [hasGame, hydrated, state]);
+  }, [hasGame, hydrated, openingTasks, state]);
 
   const resetGame = () => {
     const fresh = createInitialState(state.scenarioId, {
@@ -91,24 +113,27 @@ export default function Home() {
       locationType: state.locationType,
       startMode: state.startMode
     });
+    const tasks = createOpeningTasks();
     setState(fresh);
-    setOpeningTasks(createOpeningTasks());
+    setOpeningTasks(tasks);
     setActionResult(null);
-    window.localStorage.setItem(storageKey, JSON.stringify(fresh));
+    window.localStorage.setItem(storageKey, JSON.stringify(createSavePayload(fresh, tasks, true)));
   };
 
   const startScenario = (scenarioId: string, profile: StartProfile) => {
     const fresh = createInitialState(scenarioId, profile);
+    const tasks = createOpeningTasks();
     setState(fresh);
-    setOpeningTasks(createOpeningTasks());
+    setOpeningTasks(tasks);
     setActionResult(null);
     setHasGame(true);
-    window.localStorage.setItem(storageKey, JSON.stringify(fresh));
+    window.localStorage.setItem(storageKey, JSON.stringify(createSavePayload(fresh, tasks, true)));
   };
 
   const pickNewScenario = () => {
     setHasGame(false);
     window.localStorage.removeItem(storageKey);
+    window.localStorage.removeItem(legacyStorageKey);
   };
 
   const performAction = (
@@ -140,8 +165,10 @@ export default function Home() {
     if (blockIfSetupLocked()) return;
     const categoryName = state.inventory.find((item) => item.id === categoryId)?.name ?? "Stok";
     performAction(
-      payment === "cash" ? "Peşin depo alımı" : "Vadeli depo alımı",
-      `${categoryName} rafa girdi. Vadeli alım bugün kasayı düşürmez; vade defterine yeni ödeme yazar.`,
+      payment === "cash" ? "Peşin depo alımı" : `${purchasePaymentLabels[payment]} depo alımı`,
+      payment === "cash"
+        ? `${categoryName} rafa girdi. Peşin alım kasayı bugün düşürür ama iskonto ve depo güveni kazandırır.`
+        : `${categoryName} rafa girdi. Vadeli alım bugün kasayı düşürmez; vade defterine yeni ödeme yazar.`,
       (current) => buyInventory(current, categoryId, 10, payment),
       (before, after) => {
         const beforeUnits = before.inventory.reduce((sum, item) => sum + item.stock, 0);
@@ -234,8 +261,9 @@ export default function Home() {
   }
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <>
+      <div className="app-shell">
+        <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
             <Store size={25} aria-hidden="true" />
@@ -375,7 +403,9 @@ export default function Home() {
             <ReportPanel state={state} />
           </>
         )}
-      </main>
-    </div>
+        </main>
+      </div>
+      <FeedbackDock state={state} />
+    </>
   );
 }

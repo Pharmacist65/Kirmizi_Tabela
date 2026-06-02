@@ -1,7 +1,7 @@
 import { ClipboardList, PackageCheck, UserRound, UsersRound } from "lucide-react";
 import { roleLabels, staffTasks } from "@/data/staff";
 import { shelfFocusLabels } from "@/game/engine";
-import type { GameState } from "@/game/types";
+import type { DayPhase, GameState } from "@/game/types";
 
 type LivePharmacySceneProps = {
   state: GameState;
@@ -17,11 +17,30 @@ function taskLabel(taskId?: string) {
   return staffTasks.find((task) => task.id === taskId)?.title ?? "Görevde";
 }
 
+const phaseLabels: Record<DayPhase, string> = {
+  morning: "Sabah hazırlığı",
+  open: "Açık eczane",
+  closing: "Gün sonu"
+};
+
+function taskZone(taskId?: string) {
+  if (!taskId) return "idle";
+  if (taskId.includes("sgk") || taskId.includes("rx")) return "sgk";
+  if (taskId.includes("stock")) return "stock";
+  if (taskId.includes("dermo")) return "dermo";
+  if (taskId.includes("counter") || taskId.includes("patient")) return "counter";
+  return "idle";
+}
+
 export function LivePharmacyScene({ state }: LivePharmacySceneProps) {
   const report = state.lastDayReport;
-  const queueSize = Math.min(8, Math.max(2, Math.round(state.traffic / 18) + Math.floor((report?.missedUnits ?? 0) / 5)));
+  const queueSize = state.setupCompleted
+    ? Math.min(8, Math.max(2, Math.round(state.traffic / 18) + Math.floor((report?.missedUnits ?? 0) / 5)))
+    : 0;
   const soldToday = report?.soldUnits ?? 0;
   const missedToday = report?.missedUnits ?? 0;
+  const footfall = Math.min(5, Math.max(2, Math.round(state.traffic / 24)));
+  const mood = state.satisfaction < 45 ? "Baskılı" : state.satisfaction > 74 ? "Rahat" : "Yoğun";
 
   return (
     <section className="live-pharmacy-scene">
@@ -31,6 +50,8 @@ export function LivePharmacyScene({ state }: LivePharmacySceneProps) {
           <p>{shelfFocusLabels[state.shelfFocus]} · satışlar raf, stok ve personel kararlarından doğar.</p>
         </div>
         <div className="scene-pills">
+          <span>{state.timeLabel} · {phaseLabels[state.dayPhase]}</span>
+          <span>{mood} akış</span>
           <span><PackageCheck size={15} /> Satılan {soldToday}</span>
           <span><UsersRound size={15} /> Kaçan {missedToday}</span>
         </div>
@@ -51,7 +72,7 @@ export function LivePharmacyScene({ state }: LivePharmacySceneProps) {
         <div className="stage-grid">
           <div className="shelf-wall">
             {state.inventory.slice(0, 6).map((item) => (
-              <div className={`visual-shelf ${item.kind}`} key={item.id}>
+              <div className={`visual-shelf ${item.kind} ${item.stock / item.capacity < 0.22 ? "low" : ""}`} key={item.id}>
                 <strong>{item.name}</strong>
                 <div className="shelf-products">
                   {stockCells(item.stock, item.capacity).map((filled, index) => (
@@ -69,17 +90,29 @@ export function LivePharmacyScene({ state }: LivePharmacySceneProps) {
               <strong>Banko</strong>
             </div>
             <div className="customer-queue">
-              {Array.from({ length: queueSize }, (_, index) => (
-                <span className={index >= queueSize - Math.min(2, missedToday) ? "impatient" : ""} key={index}>
-                  <UserRound size={18} />
-                </span>
-              ))}
+              {queueSize ? (
+                Array.from({ length: queueSize }, (_, index) => (
+                  <span className={index >= queueSize - Math.min(2, missedToday) ? "impatient" : ""} key={index}>
+                    <UserRound size={18} />
+                  </span>
+                ))
+              ) : (
+                <em>Kurulum bekleniyor</em>
+              )}
+            </div>
+            <div className="customer-stream" aria-hidden="true">
+              {state.setupCompleted &&
+                Array.from({ length: footfall }, (_, index) => (
+                  <span key={index} style={{ animationDelay: `${index * 620}ms` }}>
+                    <UserRound size={15} />
+                  </span>
+                ))}
             </div>
           </div>
 
           <div className="staff-zones">
             {state.staff.slice(0, 4).map((person) => (
-              <div className="staff-token" key={person.id}>
+              <div className={`staff-token ${taskZone(person.assignedTaskId)}`} key={person.id}>
                 <b>{person.name.slice(0, 1)}</b>
                 <span>{roleLabels[person.role]}</span>
                 <small>{taskLabel(person.assignedTaskId)}</small>

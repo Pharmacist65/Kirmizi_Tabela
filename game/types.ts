@@ -98,7 +98,7 @@ export type RoutineExpenses = {
 
 export type InventoryKind = "prescription" | "otc" | "dermo" | "medical";
 
-export type PurchasePayment = "cash" | "term";
+export type PurchasePayment = "cash" | "term-45" | "term-60" | "term-90";
 
 export type LedgerStatus = "open" | "paid" | "overdue";
 

@@ -18,9 +18,11 @@ export function DayReportPanel({ report }: DayReportPanelProps) {
           <h3>{report.title}</h3>
           <div className="report-kpis">
             <div><span>Nakit</span><strong>{formatMoney(report.cashSales)}</strong></div>
-            <div><span>POS</span><strong>{formatMoney(report.posSales)}</strong></div>
+            <div><span>POS alacağı</span><strong>{formatMoney(report.posSales)}</strong></div>
             <div><span>SGK</span><strong>{formatMoney(report.sgkAccrued)}</strong></div>
             <div><span>Kaçan</span><strong>{report.missedUnits}</strong></div>
+            <div><span>Tahsilat</span><strong>{formatMoney(report.collections)}</strong></div>
+            <div><span>Depo ödemesi</span><strong>{formatMoney(report.supplierPaid)}</strong></div>
           </div>
           <div className="sold-lines">
             {report.lines.filter((line) => line.soldUnits || line.missedUnits).slice(0, 5).map((line) => (

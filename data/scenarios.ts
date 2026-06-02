@@ -265,6 +265,7 @@ export function createScenarioState(scenarioId = defaultScenarioId, profile?: St
   const startingDebt = isNewOpening ? 0 : scenario.startingDebt;
   const startingSgkReceivable = isNewOpening ? 0 : scenario.startingSgkReceivable;
   const startingPosReceivable = isNewOpening ? 0 : scenario.startingPosReceivable;
+  const startingPrivateInsuranceReceivable = isNewOpening ? 0 : scenario.privateInsuranceReceivable;
   const initialSupplierPayables = startingDebt
     ? [
         {
@@ -304,6 +305,19 @@ export function createScenarioState(scenarioId = defaultScenarioId, profile?: St
         }
       ]
     : [];
+  const initialPrivateInsuranceReceivables = startingPrivateInsuranceReceivable
+    ? [
+        {
+          id: `private-opening-${scenario.id}`,
+          amount: startingPrivateInsuranceReceivable,
+          dueDay: 25,
+          source: "private-insurance" as const,
+          status: "open" as const,
+          description: "Devreden özel sigorta alacağı",
+          createdDay: 1
+        }
+      ]
+    : [];
 
   const locationName = `${city} / ${district} · ${locationTypeLabels[locationType]}`;
 
@@ -324,7 +338,7 @@ export function createScenarioState(scenarioId = defaultScenarioId, profile?: St
     difficulty: scenario.difficulty,
     monthlyRent,
     posCommissionRate: scenario.posCommissionRate,
-    privateInsuranceReceivable: scenario.privateInsuranceReceivable,
+    privateInsuranceReceivable: startingPrivateInsuranceReceivable,
     traffic: clamp(districtProfile.traffic + locationModifier.traffic),
     prescriptionPressure: clamp(districtProfile.prescriptionPressure + locationModifier.prescription),
     retailPotential: clamp(districtProfile.retailPotential + locationModifier.retail),
@@ -355,7 +369,7 @@ export function createScenarioState(scenarioId = defaultScenarioId, profile?: St
     supplierPayables: initialSupplierPayables,
     posReceivables: initialPosReceivables,
     sgkReceivables: initialSgkReceivables,
-    privateInsuranceReceivables: [],
+    privateInsuranceReceivables: initialPrivateInsuranceReceivables,
     marketplaceReceivables: [],
     pharmacyMarketBalance: 0,
     lastDayReport: null,

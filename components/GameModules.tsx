@@ -11,8 +11,14 @@ import {
   UsersRound
 } from "lucide-react";
 import { roleLabels, staffCandidates, staffTasks } from "@/data/staff";
-import { calculateMonthlyRoutineExpenses, formatMoney, getPurchaseQuote, shelfFocusLabels } from "@/game/engine";
-import type { GameState, PurchasePayment, ShelfFocus } from "@/game/types";
+import {
+  calculateMonthlyRoutineExpenses,
+  formatMoney,
+  getPurchaseQuote,
+  purchasePaymentLabels,
+  shelfFocusLabels
+} from "@/game/engine";
+import type { GameState, LedgerEntry, PurchasePayment, ShelfFocus } from "@/game/types";
 
 export type ModuleId = "eczane" | "depo" | "stok" | "sgk" | "personel" | "finans" | "pazar";
 
@@ -34,9 +40,41 @@ type GameModulesProps = {
 };
 
 const shelfOptions: ShelfFocus[] = ["balanced", "prescription", "otc", "dermo", "flow"];
+const purchaseOptions: PurchasePayment[] = ["cash", "term-45", "term-60", "term-90"];
 
 function stockRatio(stock: number, capacity: number) {
   return Math.min(100, Math.round((stock / capacity) * 100));
+}
+
+function ledgerStatusLabel(status: LedgerEntry["status"]) {
+  if (status === "paid") return "Ödendi";
+  if (status === "overdue") return "Aksadı";
+  return "Açık";
+}
+
+function LedgerList({ title, entries, emptyLabel }: { title: string; entries: LedgerEntry[]; emptyLabel: string }) {
+  const visibleEntries = entries
+    .filter((entry) => entry.status !== "paid" && entry.amount > 0)
+    .sort((a, b) => a.dueDay - b.dueDay)
+    .slice(0, 5);
+
+  return (
+    <div className="ledger-list">
+      <strong>{title}</strong>
+      {visibleEntries.length ? (
+        visibleEntries.map((entry, index) => (
+          <span className={entry.status === "overdue" ? "overdue" : ""} key={`${entry.id}-${index}`}>
+            <b>{entry.description}</b>
+            <em>
+              {formatMoney(entry.amount)} · gün {entry.dueDay} · {ledgerStatusLabel(entry.status)}
+            </em>
+          </span>
+        ))
+      ) : (
+        <span>{emptyLabel}</span>
+      )}
+    </div>
+  );
 }
 
 export function GameModules({
@@ -71,8 +109,6 @@ export function GameModules({
         </div>
         <div className="trade-grid">
           {state.inventory.map((item) => {
-            const cashQuote = getPurchaseQuote(state, item.id, 10, "cash");
-            const termQuote = getPurchaseQuote(state, item.id, 10, "term");
             return (
               <article className="trade-card" key={item.id}>
                 <div>
@@ -85,21 +121,25 @@ export function GameModules({
                   <i style={{ width: `${stockRatio(item.stock, item.capacity)}%` }} />
                 </div>
                 <small>
-                  Standart vade {item.defaultTermDays} gün · miat riski {item.expiryRisk}/100
+                  Kategori vade alışkanlığı {item.defaultTermDays} gün · miat riski {item.expiryRisk}/100
                 </small>
-                <div className="preview-line">
-                  <span>Peşin: Kasa -{formatMoney(cashQuote?.amount ?? 0)}, stok +{cashQuote?.boughtUnits ?? 0}</span>
-                  <span>
-                    Vadeli: bugün kasa çıkmaz, {formatMoney(termQuote?.amount ?? 0)} {termQuote?.dueLabel ?? "vadeye"} yazılır
-                  </span>
+                <div className="preview-line term-preview">
+                  {purchaseOptions.map((payment) => {
+                    const quote = getPurchaseQuote(state, item.id, 10, payment);
+                    return (
+                      <span key={payment}>
+                        {purchasePaymentLabels[payment]}: {formatMoney(quote?.amount ?? 0)}
+                        {payment === "cash" ? " bugün" : ` · ${quote?.dueLabel ?? "vade"}`}
+                      </span>
+                    );
+                  })}
                 </div>
-                <div className="button-row">
-                  <button disabled={item.stock >= item.capacity} onClick={() => onBuyInventory(item.id, "cash")}>
-                    Peşin 10 al
-                  </button>
-                  <button disabled={item.stock >= item.capacity} onClick={() => onBuyInventory(item.id, "term")}>
-                    Vadeli 10 al
-                  </button>
+                <div className="payment-button-grid">
+                  {purchaseOptions.map((payment) => (
+                    <button disabled={item.stock >= item.capacity} key={payment} onClick={() => onBuyInventory(item.id, payment)}>
+                      {purchasePaymentLabels[payment]}
+                    </button>
+                  ))}
                 </div>
               </article>
             );
@@ -172,6 +212,14 @@ export function GameModules({
             Oda onayı işlemi
           </button>
         </div>
+        <div className="ledger-columns">
+          <LedgerList title="SGK alacak defteri" entries={state.sgkReceivables} emptyLabel="Açık SGK alacağı yok." />
+          <LedgerList
+            title="Özel sigorta alacakları"
+            entries={state.privateInsuranceReceivables}
+            emptyLabel="Açık özel sigorta alacağı yok."
+          />
+        </div>
       </section>
     );
   }
@@ -239,17 +287,13 @@ export function GameModules({
           <div><span>Son günlük kâr</span><strong>{formatMoney(state.dailyProfit)}</strong></div>
           <div><span>Eczacı pazarı bakiyesi</span><strong>{formatMoney(state.pharmacyMarketBalance)}</strong></div>
         </div>
-        <div className="ledger-list">
-          <strong>Yakın vadeler</strong>
-          {state.supplierPayables
-            .filter((entry) => entry.status !== "paid")
-            .sort((a, b) => a.dueDay - b.dueDay)
-            .slice(0, 4)
-            .map((entry) => (
-              <span key={entry.id}>
-                {entry.description}: {formatMoney(entry.amount)} · gün {entry.dueDay}
-              </span>
-            ))}
+        <div className="ledger-columns">
+          <LedgerList title="Depo vadeleri" entries={state.supplierPayables} emptyLabel="Açık depo vadesi yok." />
+          <LedgerList
+            title="Bekleyen tahsilatlar"
+            entries={[...state.posReceivables, ...state.sgkReceivables, ...state.privateInsuranceReceivables, ...state.marketplaceReceivables]}
+            emptyLabel="Bekleyen tahsilat yok."
+          />
         </div>
         <button className="large-action" onClick={onPayDebt}>Depo borcundan ödeme yap</button>
       </section>

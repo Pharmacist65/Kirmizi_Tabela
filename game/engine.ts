@@ -114,6 +114,37 @@ function getSupplierDueDay(state: GameState, termDays: number) {
   return Math.max(state.currentDay + 1, adjusted);
 }
 
+function getSgkCollectionDay(currentDay: number) {
+  const month = monthOfDay(currentDay);
+  const day = dayOfMonth(currentDay);
+  if (day <= 7) return (month - 1) * 30 + 15;
+  if (day <= 15) return (month - 1) * 30 + 16;
+  return month * 30 + 15;
+}
+
+function getPurchaseTermDays(payment: PurchasePayment) {
+  if (payment === "term-45") return 45;
+  if (payment === "term-60") return 60;
+  if (payment === "term-90") return 90;
+  return 0;
+}
+
+function getTermMultiplier(state: GameState, payment: PurchasePayment) {
+  if (payment === "cash") return 0.94;
+  const trustMultiplier = state.supplierTrust >= 74 ? 0.985 : state.supplierTrust < 42 ? 1.035 : 1;
+  if (payment === "term-45") return 0.99 * trustMultiplier;
+  if (payment === "term-60") return trustMultiplier;
+  const longTermPressure = state.supplierTrust >= 70 ? 1.015 : state.supplierTrust < 45 ? 1.09 : 1.045;
+  return longTermPressure * trustMultiplier;
+}
+
+function getSupplierTrustDelta(payment: PurchasePayment) {
+  if (payment === "cash") return 3;
+  if (payment === "term-45") return 1.5;
+  if (payment === "term-60") return 0.5;
+  return -1;
+}
+
 export function calculateMonthlyRoutineExpenses(state: GameState) {
   return moneyRound(state.monthlyRent + getStaffSalaryTotal(state) + getRoutineExpenseTotal(state));
 }
@@ -216,6 +247,13 @@ export const shelfFocusLabels: Record<ShelfFocus, string> = {
   dermo: "Dermo Vitrini",
   otc: "OTC Hızlı Raf",
   flow: "Akış & Banko"
+};
+
+export const purchasePaymentLabels: Record<PurchasePayment, string> = {
+  cash: "Peşin iskonto",
+  "term-45": "45 gün vade",
+  "term-60": "60 gün vade",
+  "term-90": "90 gün vade"
 };
 
 const shelfProfiles: Record<
@@ -592,15 +630,8 @@ export function getPurchaseQuote(state: GameState, categoryId: string, units: nu
   const availableSpace = Math.max(0, category.capacity - category.stock);
   const boughtUnits = Math.min(units, availableSpace);
   const baseCost = moneyRound(category.unitCost * boughtUnits);
-  const trustDiscount = state.supplierTrust >= 74 ? 0.98 : state.supplierTrust < 42 ? 1.03 : 1;
-  const cashMultiplier = payment === "cash" ? 0.96 : trustDiscount;
-  const amount = moneyRound(baseCost * cashMultiplier);
-  const termDays =
-    payment === "cash"
-      ? 0
-      : state.supplierTrust < 38
-        ? Math.max(30, category.defaultTermDays - 30)
-        : category.defaultTermDays;
+  const termDays = getPurchaseTermDays(payment);
+  const amount = moneyRound(baseCost * getTermMultiplier(state, payment));
   const dueDay = payment === "cash" ? state.currentDay : getSupplierDueDay(state, termDays);
 
   return {
@@ -609,7 +640,9 @@ export function getPurchaseQuote(state: GameState, categoryId: string, units: nu
     amount,
     termDays,
     dueDay,
-    dueLabel: payment === "cash" ? "peşin" : formatGameDate(dueDay)
+    dueLabel: payment === "cash" ? "peşin" : formatGameDate(dueDay),
+    paymentLabel: purchasePaymentLabels[payment],
+    unitPrice: boughtUnits ? moneyRound(amount / boughtUnits) : 0
   };
 }
 
@@ -635,7 +668,7 @@ export function buyInventory(
       : item
   );
   const supplierPayables =
-    payment === "term"
+    payment !== "cash"
       ? [
           ...state.supplierPayables,
           createLedgerEntry(
@@ -643,7 +676,7 @@ export function buyInventory(
             category.kind === "dermo" ? "dealer" : "supplier",
             amount,
             dueDay,
-            `${category.name} alımı · ${boughtUnits} adet · ${termDays} gün vade`
+            `${category.name} alımı · ${boughtUnits} adet · ${purchasePaymentLabels[payment]}`
           )
         ]
       : state.supplierPayables;
@@ -656,11 +689,11 @@ export function buyInventory(
     xp: nextXp,
     level: Math.max(state.level, getLevelFromXp(nextXp)),
     cash: payment === "cash" ? Math.max(0, moneyRound(state.cash - amount)) : state.cash,
-    supplierTrust: clamp(state.supplierTrust + (payment === "cash" ? 2 : 1)),
+    supplierTrust: clamp(state.supplierTrust + getSupplierTrustDelta(payment)),
     lastReport:
       payment === "cash"
         ? `${category.name} için ${boughtUnits} adet peşin alım yapıldı. Peşin iskonto alındı.`
-        : `${category.name} için ${boughtUnits} adet alındı; ödeme ${formatGameDate(dueDay)} vade defterine yazıldı.`
+        : `${category.name} için ${boughtUnits} adet alındı; ${termDays} gün vade ${formatGameDate(dueDay)} tarihine yazıldı.`
   });
 }
 
@@ -884,7 +917,7 @@ function simulateBusinessDay(state: GameState): GameState {
   const posCommission = moneyRound(inventorySales.posSales * (state.posCommissionRate / 100));
   const netPos = Math.max(0, moneyRound(inventorySales.posSales - posCommission));
   const posDelay = state.posCommissionRate < 0.75 ? 10 : 1;
-  const sgkDueDay = monthOfDay(state.currentDay) * 30 + 15;
+  const sgkDueDay = getSgkCollectionDay(state.currentDay);
   const privateDueDay = state.currentDay + 25;
   const posReceivables =
     netPos > 0
