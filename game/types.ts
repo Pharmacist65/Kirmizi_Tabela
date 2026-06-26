@@ -135,6 +135,23 @@ export type InventoryCategory = {
   defaultTermDays: number;
 };
 
+export type DepotOrderStatus = "ordered" | "delivered" | "opened" | "shelved";
+
+export type DepotOrder = {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  units: number;
+  amount: number;
+  payment: PurchasePayment;
+  paymentLabel: string;
+  dueDay: number;
+  orderedDay: number;
+  status: DepotOrderStatus;
+  boxCode: string;
+  revealItems: string[];
+};
+
 export type DaySaleLine = {
   categoryId: string;
   name: string;
@@ -240,6 +257,7 @@ export type GameState = {
   level: number;
   xp: number;
   inventory: InventoryCategory[];
+  depotOrders: DepotOrder[];
   staff: StaffMember[];
   supplierPayables: LedgerEntry[];
   posReceivables: LedgerEntry[];

@@ -365,6 +365,7 @@ export function createScenarioState(scenarioId = defaultScenarioId, profile?: St
       ...item,
       stock: isNewOpening ? Math.max(0, Math.round(item.stock * 0.12)) : item.stock
     })),
+    depotOrders: [],
     staff: isNewOpening ? [] : createInitialStaff(),
     supplierPayables: initialSupplierPayables,
     posReceivables: initialPosReceivables,

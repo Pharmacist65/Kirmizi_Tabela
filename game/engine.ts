@@ -3,6 +3,7 @@ import { dailyActions } from "@/data/dailyActions";
 import { strategicActions } from "@/data/actions";
 import { competitorPharmacies } from "@/data/competitors";
 import { openingTaskTemplates } from "@/data/openingTasks";
+import { getShelfProducts } from "@/data/retailProducts";
 import { staffCandidates, staffTasks } from "@/data/staff";
 import { createScenarioState } from "@/data/scenarios";
 import { surpriseTemplates } from "@/data/surprises";
@@ -695,6 +696,103 @@ export function buyInventory(
         ? `${category.name} için ${boughtUnits} adet peşin alım yapıldı. Peşin iskonto alındı.`
         : `${category.name} için ${boughtUnits} adet alındı; ${termDays} gün vade ${formatGameDate(dueDay)} tarihine yazıldı.`
   });
+}
+
+export function placeDepotOrder(
+  state: GameState,
+  categoryId: string,
+  payment: PurchasePayment,
+  units = 12
+): GameState {
+  const quote = getPurchaseQuote(state, categoryId, units, payment);
+  if (!quote || quote.boughtUnits <= 0) return state;
+  const { category, boughtUnits, amount, dueDay, termDays } = quote;
+  const currentOrders = state.depotOrders ?? [];
+  const productLabels = getShelfProducts(categoryId).map((product) => product.label);
+  const revealItems = productLabels.length
+    ? productLabels.slice(0, Math.min(5, productLabels.length))
+    : [category.name, `${category.name} destek`, `${category.name} yedek`];
+  const orderId = `depot-order-${state.currentDay}-${categoryId}-${payment}-${currentOrders.length + 1}`;
+  const supplierPayables =
+    payment !== "cash"
+      ? [
+          ...state.supplierPayables,
+          createLedgerEntry(
+            state,
+            category.kind === "dermo" ? "dealer" : "supplier",
+            amount,
+            dueDay,
+            `${category.name} koli siparişi · ${boughtUnits} adet · ${purchasePaymentLabels[payment]}`
+          )
+        ]
+      : state.supplierPayables;
+
+  return syncLedgerTotals(withLevelProgress({
+    ...state,
+    cash: payment === "cash" ? Math.max(0, moneyRound(state.cash - amount)) : state.cash,
+    supplierPayables,
+    supplierTrust: clamp(state.supplierTrust + getSupplierTrustDelta(payment)),
+    xp: state.xp + 3,
+    depotOrders: [
+      {
+        id: orderId,
+        categoryId,
+        categoryName: category.name,
+        units: boughtUnits,
+        amount,
+        payment,
+        paymentLabel: purchasePaymentLabels[payment],
+        dueDay,
+        orderedDay: state.currentDay,
+        status: "delivered",
+        boxCode: `${category.kind.toLocaleUpperCase("tr-TR")}-${state.currentDay}-${currentOrders.length + 1}`,
+        revealItems
+      },
+      ...currentOrders
+    ],
+    lastReport:
+      payment === "cash"
+        ? `${category.name} için ${boughtUnits} adetlik koli peşin sipariş edildi. Koli teslim alanında açılmayı bekliyor.`
+        : `${category.name} kolisi sipariş edildi; ${termDays} gün vade ${formatGameDate(dueDay)} tarihine yazıldı. Koli açılmayı bekliyor.`
+  }));
+}
+
+export function openDepotBox(state: GameState, orderId: string): GameState {
+  const currentOrders = state.depotOrders ?? [];
+  const order = currentOrders.find((item) => item.id === orderId);
+  if (!order || order.status !== "delivered") return state;
+
+  return withLevelProgress({
+    ...state,
+    xp: state.xp + 4,
+    depotOrders: currentOrders.map((item) => (item.id === orderId ? { ...item, status: "opened" as const } : item)),
+    lastReport: `${order.categoryName} kolisi açıldı: ${order.revealItems.join(", ")}. Şimdi raf/depoya yerleştir.`
+  });
+}
+
+export function shelveDepotBox(state: GameState, orderId: string): GameState {
+  const currentOrders = state.depotOrders ?? [];
+  const order = currentOrders.find((item) => item.id === orderId);
+  if (!order || order.status !== "opened") return state;
+
+  const nextInventory = state.inventory.map((item) =>
+    item.id === order.categoryId
+      ? {
+          ...item,
+          stock: Math.min(item.capacity, item.stock + order.units)
+        }
+      : item
+  );
+
+  return syncLedgerTotals(withLevelProgress({
+    ...state,
+    inventory: nextInventory,
+    depotOrders: currentOrders.map((item) => (item.id === orderId ? { ...item, status: "shelved" as const } : item)),
+    stockHealth: calculateInventoryHealth(nextInventory),
+    satisfaction: clamp(state.satisfaction + 1),
+    xp: state.xp + 8,
+    lastReport: `${order.categoryName} kolisi rafa alındı. ${order.units} adet stok eklendi, raf sağlığı güncellendi.`
+  }));
 }
 
 export function buyFromMarketplace(state: GameState, categoryId: string, units = 6): GameState {

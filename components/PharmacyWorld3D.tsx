@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Html, OrbitControls, Text } from "@react-three/drei";
 import { BoxGeometry, DoubleSide } from "three";
 import type { Group } from "three";
@@ -21,6 +21,74 @@ type PharmacyWorld3DProps = {
 type Vec3 = [number, number, number];
 type ActorSelectHandler = (actor: WorldActor) => void;
 type WorldView = "street" | "interior";
+type AvatarHair = "short" | "bob" | "covered";
+type AvatarTop = "red-coat" | "white-coat" | "black-shirt";
+type AvatarBottom = "skirt" | "pants";
+type AvatarShoes = "white" | "red" | "black";
+type AvatarOutfit = {
+  hair: AvatarHair;
+  top: AvatarTop;
+  bottom: AvatarBottom;
+  shoes: AvatarShoes;
+  mask: boolean;
+  backpack: boolean;
+};
+
+type AvatarCyclePart = "hair" | "top" | "bottom" | "shoes";
+
+const avatarHairOptions: AvatarHair[] = ["short", "bob", "covered"];
+const avatarTopOptions: AvatarTop[] = ["red-coat", "white-coat", "black-shirt"];
+const avatarBottomOptions: AvatarBottom[] = ["skirt", "pants"];
+const avatarShoeOptions: AvatarShoes[] = ["white", "red", "black"];
+
+const defaultAvatarOutfit: AvatarOutfit = {
+  hair: "short",
+  top: "red-coat",
+  bottom: "skirt",
+  shoes: "white",
+  mask: false,
+  backpack: true
+};
+
+const avatarHairLabels: Record<AvatarHair, string> = {
+  short: "Kısa saç",
+  bob: "Bob kesim",
+  covered: "Bone / örtü"
+};
+
+const avatarTopLabels: Record<AvatarTop, string> = {
+  "red-coat": "Kırmızı önlük",
+  "white-coat": "Beyaz önlük",
+  "black-shirt": "Siyah forma"
+};
+
+const avatarBottomLabels: Record<AvatarBottom, string> = {
+  skirt: "Etek",
+  pants: "Pantolon"
+};
+
+const avatarShoeLabels: Record<AvatarShoes, string> = {
+  white: "Beyaz",
+  red: "Kırmızı",
+  black: "Siyah"
+};
+
+const avatarTopColors: Record<AvatarTop, string> = {
+  "red-coat": "#b21f2d",
+  "white-coat": "#f5f6ee",
+  "black-shirt": "#20282a"
+};
+
+const avatarBottomColors: Record<AvatarBottom, string> = {
+  skirt: "#17242a",
+  pants: "#24313b"
+};
+
+const avatarShoeColors: Record<AvatarShoes, string> = {
+  white: "#f5f2e9",
+  red: "#b21f2d",
+  black: "#202320"
+};
 
 const kindColors = {
   prescription: "#eef5f2",
@@ -622,6 +690,7 @@ function HumanoidAvatar({
   jacket,
   label,
   labelOffset,
+  outfit,
   roleBadge,
   skinTone
 }: {
@@ -633,11 +702,15 @@ function HumanoidAvatar({
   jacket?: boolean;
   label?: string;
   labelOffset?: Vec3;
+  outfit?: AvatarOutfit;
   roleBadge?: string;
   skinTone: string;
 }) {
-  const shoeColor = "#263028";
-  const legColor = jacket ? "#233047" : "#27343f";
+  const topColor = outfit ? avatarTopColors[outfit.top] : bodyColor;
+  const legColor = outfit ? avatarBottomColors[outfit.bottom] : jacket ? "#233047" : "#27343f";
+  const shoeColor = outfit ? avatarShoeColors[outfit.shoes] : "#263028";
+  const isCoat = jacket || outfit?.top === "white-coat" || outfit?.top === "red-coat";
+  const accent = accentColor ?? (outfit?.top === "white-coat" ? "#b21f2d" : "#f6f2eb");
 
   return (
     <group>
@@ -653,19 +726,19 @@ function HumanoidAvatar({
 
       <mesh castShadow position={[0, 0.48, 0]} scale={[0.28, 0.42, 0.16]}>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color={bodyColor} roughness={0.58} />
+        <meshStandardMaterial color={topColor} roughness={0.58} />
       </mesh>
 
-      {jacket && (
+      {isCoat && (
         <>
           <AvatarLimb color="#f6f8f4" position={[-0.075, 0.49, 0.086]} scale={[0.115, 0.4, 0.025]} />
           <AvatarLimb color="#f6f8f4" position={[0.075, 0.49, 0.086]} scale={[0.115, 0.4, 0.025]} />
-          <AvatarLimb color={accentColor ?? "#b11e2b"} position={[0, 0.5, 0.104]} scale={[0.025, 0.36, 0.02]} />
+          <AvatarLimb color={accent} position={[0, 0.5, 0.104]} scale={[0.025, 0.36, 0.02]} />
         </>
       )}
 
-      <AvatarLimb color={bodyColor} position={[-0.215, 0.49, 0.02]} rotation={[0, 0, -0.18]} scale={[0.07, 0.34, 0.07]} />
-      <AvatarLimb color={bodyColor} position={[0.215, 0.49, 0.02]} rotation={[0, 0, 0.18]} scale={[0.07, 0.34, 0.07]} />
+      <AvatarLimb color={topColor} position={[-0.215, 0.49, 0.02]} rotation={[0, 0, -0.18]} scale={[0.07, 0.34, 0.07]} />
+      <AvatarLimb color={topColor} position={[0.215, 0.49, 0.02]} rotation={[0, 0, 0.18]} scale={[0.07, 0.34, 0.07]} />
       <mesh castShadow position={[-0.235, 0.29, 0.025]}>
         <sphereGeometry args={[0.045, 12, 12]} />
         <meshStandardMaterial color={skinTone} roughness={0.58} />
@@ -679,18 +752,46 @@ function HumanoidAvatar({
         <sphereGeometry args={[0.15, 20, 20]} />
         <meshStandardMaterial color={skinTone} roughness={0.55} />
       </mesh>
-      <mesh castShadow position={[0, 0.87, -0.012]} scale={[1.05, 0.46, 0.96]}>
-        <sphereGeometry args={[0.15, 18, 18]} />
-        <meshStandardMaterial color={hairColor} roughness={0.72} />
+      <mesh castShadow position={[-0.055, 0.79, 0.135]} scale={[0.18, 0.06, 0.035]}>
+        <sphereGeometry args={[0.06, 10, 10]} />
+        <meshStandardMaterial color="#1b2325" roughness={0.52} />
       </mesh>
+      <mesh castShadow position={[0.055, 0.79, 0.135]} scale={[0.18, 0.06, 0.035]}>
+        <sphereGeometry args={[0.06, 10, 10]} />
+        <meshStandardMaterial color="#1b2325" roughness={0.52} />
+      </mesh>
+      <AvatarLimb color="#9b5d55" position={[0, 0.725, 0.142]} scale={[0.07, 0.012, 0.012]} />
+      {outfit?.mask && (
+        <AvatarLimb color="#eef3ee" position={[0, 0.73, 0.153]} scale={[0.2, 0.095, 0.018]} />
+      )}
+      <mesh castShadow position={[0, 0.87, -0.012]} scale={[outfit?.hair === "bob" ? 1.18 : 1.05, outfit?.hair === "covered" ? 0.5 : 0.46, outfit?.hair === "covered" ? 1.08 : 0.96]}>
+        <sphereGeometry args={[0.15, 18, 18]} />
+        <meshStandardMaterial color={outfit?.hair === "covered" ? "#f0eadf" : hairColor} roughness={0.72} />
+      </mesh>
+      {outfit?.hair === "bob" && (
+        <>
+          <AvatarLimb color={hairColor} position={[-0.13, 0.76, 0.01]} scale={[0.055, 0.22, 0.075]} />
+          <AvatarLimb color={hairColor} position={[0.13, 0.76, 0.01]} scale={[0.055, 0.22, 0.075]} />
+        </>
+      )}
+      {outfit?.hair === "covered" && (
+        <AvatarLimb color="#c8d0c7" position={[0, 0.74, -0.09]} scale={[0.22, 0.16, 0.055]} />
+      )}
 
       {initial && (
         <Html center distanceFactor={8.4} position={[0, 0.51, 0.18]}>
-          <span className={`world-avatar-initial ${jacket ? "light" : ""}`}>{initial}</span>
+          <span className={`world-avatar-initial ${isCoat ? "light" : ""}`}>{initial}</span>
         </Html>
       )}
 
-      {!jacket && (
+      {outfit?.backpack && (
+        <mesh castShadow position={[0.22, 0.5, -0.12]} rotation={[0, -0.18, 0]} scale={[0.1, 0.28, 0.07]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color="#43554d" roughness={0.72} />
+        </mesh>
+      )}
+
+      {!isCoat && (
         <mesh castShadow position={[0.2, 0.42, -0.055]} rotation={[0, 0.18, 0]} scale={[0.12, 0.18, 0.05]}>
           <boxGeometry args={[1, 1, 1]} />
           <meshStandardMaterial color={accentColor ?? "#ede3c7"} roughness={0.64} />
@@ -792,6 +893,109 @@ function MovingAvatar({
         label={label}
         roleBadge={roleBadge}
         skinTone={skinTone}
+      />
+    </group>
+  );
+}
+
+function ControlledPlayerAvatar({
+  actor,
+  initialPosition,
+  onSelectActor,
+  outfit,
+  sceneView,
+  scale = 1.16
+}: {
+  actor: WorldActor;
+  initialPosition: Vec3;
+  onSelectActor: ActorSelectHandler;
+  outfit: AvatarOutfit;
+  sceneView: WorldView;
+  scale?: number;
+}) {
+  const ref = useRef<Group>(null);
+  const keysRef = useRef<Record<string, boolean>>({});
+  const bounds =
+    sceneView === "interior"
+      ? { minX: -3.22, maxX: 3.1, minZ: -2.2, maxZ: 2.62 }
+      : { minX: -6.65, maxX: 5.92, minZ: -2.92, maxZ: 3.32 };
+
+  useEffect(() => {
+    keysRef.current = {};
+    if (!ref.current) return;
+    ref.current.position.set(initialPosition[0], initialPosition[1], initialPosition[2]);
+    ref.current.rotation.y = sceneView === "interior" ? Math.PI : 0;
+  }, [initialPosition[0], initialPosition[1], initialPosition[2], sceneView]);
+
+  useEffect(() => {
+    const trackedKeys = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"]);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (!trackedKeys.has(key)) return;
+      event.preventDefault();
+      keysRef.current[key] = true;
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (!trackedKeys.has(key)) return;
+      event.preventDefault();
+      keysRef.current[key] = false;
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  useFrame(({ clock }, delta) => {
+    if (!ref.current) return;
+    const keys = keysRef.current;
+    const dx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0);
+    const dz = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
+    if (dx !== 0 || dz !== 0) {
+      const length = Math.hypot(dx, dz) || 1;
+      const speed = sceneView === "interior" ? 1.55 : 2.05;
+      const nextX = Math.min(bounds.maxX, Math.max(bounds.minX, ref.current.position.x + (dx / length) * speed * delta));
+      const nextZ = Math.min(bounds.maxZ, Math.max(bounds.minZ, ref.current.position.z + (dz / length) * speed * delta));
+      ref.current.position.set(nextX, initialPosition[1], nextZ);
+      ref.current.rotation.y = Math.atan2(dx, dz);
+    }
+    ref.current.position.y = initialPosition[1] + Math.sin(clock.elapsedTime * 7) * 0.012;
+  });
+
+  const handleClick = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    onSelectActor(actor);
+  };
+
+  const handlePointerOver = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    document.body.style.cursor = "pointer";
+  };
+
+  const handlePointerOut = () => {
+    document.body.style.cursor = "";
+  };
+
+  return (
+    <group
+      onClick={handleClick}
+      onPointerOut={handlePointerOut}
+      onPointerOver={handlePointerOver}
+      ref={ref}
+      scale={[scale, scale, scale]}
+    >
+      <HumanoidAvatar
+        accentColor="#f6f2eb"
+        bodyColor={avatarTopColors[outfit.top]}
+        hairColor="#2b2630"
+        initial="E"
+        outfit={outfit}
+        roleBadge="OYUNCU"
+        skinTone="#e7b68b"
       />
     </group>
   );
@@ -1209,6 +1413,79 @@ function RouteDots({ color, route }: { color: string; route: WorldRoute }) {
   );
 }
 
+function CameraRig({ sceneView }: { sceneView: WorldView }) {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    if (sceneView === "interior") {
+      camera.position.set(0.92, 2.05, 6.25);
+    } else {
+      camera.position.set(0.8, 2.52, 8.35);
+    }
+    camera.updateProjectionMatrix();
+  }, [camera, sceneView]);
+
+  return null;
+}
+
+function PlanetShell({ preset }: { preset: StreetPreset }) {
+  return (
+    <group position={[0, -8.95, 0]}>
+      <mesh receiveShadow scale={[8.8, 8.8, 8.8]}>
+        <sphereGeometry args={[1, 80, 36]} />
+        <meshToonMaterial color={preset.ground} />
+      </mesh>
+      <mesh position={[0, 8.92, 0]} rotation={[-Math.PI / 2, 0, -0.04]} scale={[7.5, 7.5, 1]}>
+        <torusGeometry args={[1, 0.025, 8, 96, Math.PI * 1.15]} />
+        <meshToonMaterial color={preset.road} opacity={0.55} transparent />
+      </mesh>
+      <mesh position={[0, 8.96, -0.9]} rotation={[-Math.PI / 2, 0, 0.36]} scale={[5.4, 5.4, 1]}>
+        <torusGeometry args={[1, 0.02, 8, 96, Math.PI * 0.82]} />
+        <meshToonMaterial color="#f6f4e7" opacity={0.55} transparent />
+      </mesh>
+      <mesh position={[0, 8.66, 0]} rotation={[0, 0, 0]} scale={[8.92, 8.92, 8.92]}>
+        <sphereGeometry args={[1, 80, 18, 0, Math.PI * 2, 0, Math.PI * 0.18]} />
+        <meshBasicMaterial color="#ffffff" opacity={0.12} transparent wireframe />
+      </mesh>
+    </group>
+  );
+}
+
+function TravelNode({
+  active,
+  label,
+  module,
+  onSelectModule,
+  position
+}: {
+  active?: boolean;
+  label: string;
+  module: ModuleId;
+  onSelectModule: (module: ModuleId) => void;
+  position: Vec3;
+}) {
+  const handleClick = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    onSelectModule(module);
+  };
+
+  return (
+    <group onClick={handleClick} position={position}>
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.22, 0.22, 0.035, 28]} />
+        <meshToonMaterial color={active ? "#e51823" : "#f7f8f2"} />
+      </mesh>
+      <mesh position={[0, 0.18, 0]}>
+        <sphereGeometry args={[0.08, 14, 14]} />
+        <meshToonMaterial color={active ? "#e51823" : "#244139"} emissive={active ? "#e51823" : "#000000"} emissiveIntensity={active ? 0.35 : 0} />
+      </mesh>
+      <Html center distanceFactor={5.8} position={[0, 0.42, 0]}>
+        <span className={`world-travel-node ${active ? "active" : ""}`}>{label}</span>
+      </Html>
+    </group>
+  );
+}
+
 function InteriorShelfRack({
   item,
   index,
@@ -1280,13 +1557,17 @@ function DistrictObject({ preset }: { preset: StreetPreset }) {
 
 function StreetLevelWorld({
   activeModule,
+  avatarOutfit,
   onEnterPharmacy,
+  onOpenCustomizer,
   onSelectActor,
   onSelectModule,
   state
 }: {
   activeModule: ModuleId;
+  avatarOutfit: AvatarOutfit;
   onEnterPharmacy: () => void;
+  onOpenCustomizer: () => void;
   onSelectActor: ActorSelectHandler;
   onSelectModule: (module: ModuleId) => void;
   state: GameState;
@@ -1311,6 +1592,7 @@ function StreetLevelWorld({
 
   return (
     <group>
+      <PlanetShell preset={preset} />
       <SketchPlane color={preset.ground} position={[0, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[16.8, 11.5, 1]} />
       <SketchPlane color={preset.road} position={[0.12, -0.025, 1.24]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[15.8, 1.55, 1]} />
       <SketchPlane color={preset.road} position={[-5.85, -0.024, -0.95]} rotation={[-Math.PI / 2, 0, Math.PI / 2.08]} scale={[5.2, 1.08, 1]} />
@@ -1321,6 +1603,10 @@ function StreetLevelWorld({
       <RouteDots color="#fff8d8" route={worldRoutes.patientQueue} />
       <RouteDots color="#e6b665" route={worldRoutes.courierLoop} />
       <RouteDots color="#e51823" route={worldRoutes.pharmacistPatrol} />
+      <TravelNode active={activeModule === "eczane"} label="Eczane" module="eczane" onSelectModule={onSelectModule} position={[-0.72, 0.08, 1.66]} />
+      <TravelNode active={activeModule === "depo"} label="Depo" module="depo" onSelectModule={onSelectModule} position={[-5.65, 0.08, 1.42]} />
+      <TravelNode active={activeModule === "sgk"} label="SGK" module="sgk" onSelectModule={onSelectModule} position={[4.68, 0.08, 1.18]} />
+      <TravelNode active={activeModule === "pazar"} label="Pazar" module="pazar" onSelectModule={onSelectModule} position={[1.18, 0.08, -2.78]} />
 
       <PharmacyFacade
         activeModule={activeModule}
@@ -1370,32 +1656,39 @@ function StreetLevelWorld({
       <StreetTree position={[4.75, 0, -1.72]} scale={0.86} />
       <StreetTree position={[7.05, 0, -1.22]} scale={0.72} />
 
-      <MovingAvatar
-        accentColor="#f6f2eb"
+      <ControlledPlayerAvatar
         actor={pharmacistActor}
-        bodyColor="#b21f2d"
-        hairColor="#2b2630"
-        jacket
-        offset={0.05}
+        initialPosition={[0.25, 0, 3.18]}
         onSelectActor={onSelectActor}
-        route={worldRoutes.pharmacistPatrol}
-        scale={1.12}
-        skinTone="#e7b68b"
-        speed={0.017}
+        outfit={avatarOutfit}
+        sceneView="street"
       />
+      <group onClick={(event) => { event.stopPropagation(); onOpenCustomizer(); }} position={[0.88, 0, 2.98]}>
+        <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.24, 0.24, 0.035, 28]} />
+          <meshToonMaterial color="#f7f8f2" />
+        </mesh>
+        <Html center distanceFactor={5.7} position={[0, 0.38, 0]}>
+          <span className="world-travel-node">Karakter</span>
+        </Html>
+      </group>
     </group>
   );
 }
 
 function PharmacyInteriorWorld({
   activeModule,
+  avatarOutfit,
   onExitPharmacy,
+  onOpenCustomizer,
   onSelectActor,
   onSelectModule,
   state
 }: {
   activeModule: ModuleId;
+  avatarOutfit: AvatarOutfit;
   onExitPharmacy: () => void;
+  onOpenCustomizer: () => void;
   onSelectActor: ActorSelectHandler;
   onSelectModule: (module: ModuleId) => void;
   state: GameState;
@@ -1491,19 +1784,20 @@ function PharmacyInteriorWorld({
         <span className="world-building-label active">Eczane içi</span>
       </Html>
 
-      <MovingAvatar
-        accentColor="#f6f2eb"
+      <ControlledPlayerAvatar
         actor={pharmacistActor}
-        bodyColor="#b21f2d"
-        hairColor="#2b2630"
-        jacket
-        offset={0.12}
+        initialPosition={[0.35, 0, 2.28]}
         onSelectActor={onSelectActor}
-        route={worldRoutes.interiorPharmacistPatrol}
-        scale={1.04}
-        skinTone="#e7b68b"
-        speed={0.022}
+        outfit={avatarOutfit}
+        sceneView="interior"
+        scale={1.08}
       />
+      <group onClick={(event) => { event.stopPropagation(); onOpenCustomizer(); }} position={[1.88, 0, 2.1]}>
+        <SketchPlane color="#f7f8f2" position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.42, 0.28, 1]} />
+        <Html center distanceFactor={6.2} position={[0, 0.34, 0]}>
+          <span className="world-travel-node">Karakter</span>
+        </Html>
+      </group>
     </group>
   );
 }
@@ -1649,16 +1943,20 @@ function DistrictDiorama({
 
 function StoreShell({
   activeModule,
+  avatarOutfit,
   onEnterPharmacy,
   onExitPharmacy,
+  onOpenCustomizer,
   onSelectActor,
   onSelectModule,
   sceneView,
   state
 }: {
   activeModule: ModuleId;
+  avatarOutfit: AvatarOutfit;
   onEnterPharmacy: () => void;
   onExitPharmacy: () => void;
+  onOpenCustomizer: () => void;
   onSelectActor: ActorSelectHandler;
   onSelectModule: (module: ModuleId) => void;
   sceneView: WorldView;
@@ -1668,7 +1966,9 @@ function StoreShell({
     return (
       <PharmacyInteriorWorld
         activeModule={activeModule}
+        avatarOutfit={avatarOutfit}
         onExitPharmacy={onExitPharmacy}
+        onOpenCustomizer={onOpenCustomizer}
         onSelectActor={onSelectActor}
         onSelectModule={onSelectModule}
         state={state}
@@ -1679,7 +1979,9 @@ function StoreShell({
   return (
     <StreetLevelWorld
       activeModule={activeModule}
+      avatarOutfit={avatarOutfit}
       onEnterPharmacy={onEnterPharmacy}
+      onOpenCustomizer={onOpenCustomizer}
       onSelectActor={onSelectActor}
       onSelectModule={onSelectModule}
       state={state}
@@ -1689,16 +1991,20 @@ function StoreShell({
 
 function PharmacyScene({
   activeModule,
+  avatarOutfit,
   onEnterPharmacy,
   onExitPharmacy,
+  onOpenCustomizer,
   onSelectActor,
   onSelectModule,
   sceneView,
   state
 }: {
   activeModule: ModuleId;
+  avatarOutfit: AvatarOutfit;
   onEnterPharmacy: () => void;
   onExitPharmacy: () => void;
+  onOpenCustomizer: () => void;
   onSelectActor: ActorSelectHandler;
   onSelectModule: (module: ModuleId) => void;
   sceneView: WorldView;
@@ -1717,10 +2023,13 @@ function PharmacyScene({
       <directionalLight castShadow intensity={lighting.key} position={[3.4, 6.8, 5.6]} shadow-mapSize={[1536, 1536]} />
       <pointLight color="#e51823" intensity={1.5} position={[-1.25, 2.62, -0.18]} />
       <pointLight color="#f4d36f" intensity={0.82} position={[-2.7, 1.35, 1.8]} />
+      <CameraRig sceneView={sceneView} />
       <StoreShell
         activeModule={activeModule}
+        avatarOutfit={avatarOutfit}
         onEnterPharmacy={onEnterPharmacy}
         onExitPharmacy={onExitPharmacy}
+        onOpenCustomizer={onOpenCustomizer}
         onSelectActor={onSelectActor}
         onSelectModule={onSelectModule}
         sceneView={sceneView}
@@ -1790,12 +2099,73 @@ function ActorCard({
   );
 }
 
+function AvatarCustomizer({
+  onClose,
+  onCycle,
+  onToggleBackpack,
+  onToggleMask,
+  outfit
+}: {
+  onClose: () => void;
+  onCycle: (part: AvatarCyclePart, direction: number) => void;
+  onToggleBackpack: () => void;
+  onToggleMask: () => void;
+  outfit: AvatarOutfit;
+}) {
+  const rows: { part: AvatarCyclePart; label: string; value: string }[] = [
+    { part: "hair", label: "Saç", value: avatarHairLabels[outfit.hair] },
+    { part: "top", label: "Kıyafet", value: avatarTopLabels[outfit.top] },
+    { part: "bottom", label: "Alt", value: avatarBottomLabels[outfit.bottom] },
+    { part: "shoes", label: "Ayakkabı", value: avatarShoeLabels[outfit.shoes] }
+  ];
+
+  return (
+    <aside className="avatar-customizer">
+      <header>
+        <div>
+          <span>Avatar</span>
+          <strong>Eczacı karakteri</strong>
+        </div>
+        <button aria-label="Karakter panelini kapat" onClick={onClose} type="button">
+          X
+        </button>
+      </header>
+      <div className="avatar-control-list">
+        {rows.map((row) => (
+          <div className="avatar-control-row" key={row.part}>
+            <button aria-label={`${row.label} önceki`} onClick={() => onCycle(row.part, -1)} type="button">
+              {"<"}
+            </button>
+            <span>
+              <em>{row.label}</em>
+              <b>{row.value}</b>
+            </span>
+            <button aria-label={`${row.label} sonraki`} onClick={() => onCycle(row.part, 1)} type="button">
+              {">"}
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="avatar-toggle-row">
+        <button className={outfit.mask ? "active" : ""} onClick={onToggleMask} type="button">
+          Maske {outfit.mask ? "Açık" : "Kapalı"}
+        </button>
+        <button className={outfit.backpack ? "active" : ""} onClick={onToggleBackpack} type="button">
+          Çanta {outfit.backpack ? "Açık" : "Kapalı"}
+        </button>
+      </div>
+    </aside>
+  );
+}
+
 export function PharmacyWorld3D({ activeModule, onSelectModule, setupLocked, state }: PharmacyWorld3DProps) {
   const report = state.lastDayReport;
   const sold = report?.soldUnits ?? 0;
   const missed = report?.missedUnits ?? 0;
   const [worldView, setWorldView] = useState<WorldView>("street");
   const [selectedActor, setSelectedActor] = useState<WorldActor | null>(null);
+  const [avatarOutfit, setAvatarOutfit] = useState<AvatarOutfit>(defaultAvatarOutfit);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1823,7 +2193,6 @@ export function PharmacyWorld3D({ activeModule, onSelectModule, setupLocked, sta
       { label: "Enerji", value: state.energy }
     ]
   };
-  const actorForPanel = selectedActor ?? defaultActor;
   const handleEnterPharmacy = () => {
     setWorldView("interior");
     setSelectedActor(null);
@@ -1832,6 +2201,22 @@ export function PharmacyWorld3D({ activeModule, onSelectModule, setupLocked, sta
     setWorldView("street");
     setSelectedActor(null);
   };
+  const cycleAvatarPart = (part: AvatarCyclePart, direction: number) => {
+    setAvatarOutfit((current) => {
+      const options =
+        part === "hair"
+          ? avatarHairOptions
+          : part === "top"
+            ? avatarTopOptions
+            : part === "bottom"
+              ? avatarBottomOptions
+              : avatarShoeOptions;
+      const currentValue = String(current[part]);
+      const index = (options as readonly string[]).indexOf(currentValue);
+      const nextIndex = (index + direction + options.length) % options.length;
+      return { ...current, [part]: options[nextIndex] };
+    });
+  };
 
   return (
     <section className="pharmacy-world">
@@ -1839,8 +2224,10 @@ export function PharmacyWorld3D({ activeModule, onSelectModule, setupLocked, sta
         <Suspense fallback={null}>
           <PharmacyScene
             activeModule={activeModule}
+            avatarOutfit={avatarOutfit}
             onEnterPharmacy={handleEnterPharmacy}
             onExitPharmacy={handleExitPharmacy}
+            onOpenCustomizer={() => setCustomizerOpen(true)}
             onSelectActor={setSelectedActor}
             onSelectModule={onSelectModule}
             sceneView={worldView}
@@ -1851,7 +2238,19 @@ export function PharmacyWorld3D({ activeModule, onSelectModule, setupLocked, sta
       <button className="world-view-toggle" onClick={worldView === "street" ? handleEnterPharmacy : handleExitPharmacy} type="button">
         {worldView === "street" ? "Eczaneye gir" : "Sokağa çık"}
       </button>
-      <ActorCard actor={actorForPanel} onSelectModule={onSelectModule} />
+      <button className="avatar-customize-toggle" onClick={() => setCustomizerOpen((open) => !open)} type="button">
+        Karakter
+      </button>
+      {customizerOpen && (
+        <AvatarCustomizer
+          onClose={() => setCustomizerOpen(false)}
+          onCycle={cycleAvatarPart}
+          onToggleBackpack={() => setAvatarOutfit((current) => ({ ...current, backpack: !current.backpack }))}
+          onToggleMask={() => setAvatarOutfit((current) => ({ ...current, mask: !current.mask }))}
+          outfit={avatarOutfit}
+        />
+      )}
+      {selectedActor && <ActorCard actor={selectedActor ?? defaultActor} onSelectModule={onSelectModule} />}
       <div className="world-readout">
         <span>{state.timeLabel}</span>
         <span>{setupLocked ? "Açılış hazırlığı" : `${sold} satış · ${missed} kaçan`}</span>

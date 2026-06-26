@@ -42,10 +42,13 @@ import {
   formatMoney,
   giveStaffRaise,
   hireStaff,
+  openDepotBox,
   paySupplierDebt,
+  placeDepotOrder,
   purchasePaymentLabels,
   runChamberApproval,
   runSgkControl,
+  shelveDepotBox,
   sellOnMarketplace
 } from "@/game/engine";
 import type { ActionDelta, ActionResult, DailyActionId, GameState, PurchasePayment, StartProfile, TimedTask } from "@/game/types";
@@ -231,6 +234,48 @@ export default function Home() {
     );
   };
 
+  const orderDepotBox = (categoryId: string, payment: PurchasePayment) => {
+    if (blockIfSetupLocked()) return;
+    const categoryName = state.inventory.find((item) => item.id === categoryId)?.name ?? "Stok";
+    performAction(
+      "Depo siparişi verildi",
+      `${categoryName} için koli siparişi oluşturuldu. Koli teslim alanına düşer; açıp rafa alman gerekir.`,
+      (current) => placeDepotOrder(current, categoryId, payment),
+      (before, after) => [
+        {
+          label: "Bekleyen koli",
+          before: before.depotOrders?.filter((order) => order.status !== "shelved").length ?? 0,
+          after: after.depotOrders.filter((order) => order.status !== "shelved").length,
+          delta:
+            after.depotOrders.filter((order) => order.status !== "shelved").length -
+            (before.depotOrders?.filter((order) => order.status !== "shelved").length ?? 0),
+          kind: "count"
+        }
+      ]
+    );
+  };
+
+  const openBox = (orderId: string) => {
+    performAction(
+      "Koli açıldı",
+      "Koli içeriği kontrol edildi. Ürünleri stok alanına veya rafa alarak satılabilir hale getir.",
+      (current) => openDepotBox(current, orderId)
+    );
+  };
+
+  const shelveBox = (orderId: string) => {
+    performAction(
+      "Koli rafa alındı",
+      "Açılan koli raf/stok alanına işlendi; stok sağlığı güncellendi.",
+      (current) => shelveDepotBox(current, orderId),
+      (before, after) => {
+        const beforeUnits = before.inventory.reduce((sum, item) => sum + item.stock, 0);
+        const afterUnits = after.inventory.reduce((sum, item) => sum + item.stock, 0);
+        return [{ label: "Toplam stok", before: beforeUnits, after: afterUnits, delta: afterUnits - beforeUnits, kind: "count" }];
+      }
+    );
+  };
+
   const advanceDay = () => {
     if (blockIfSetupLocked()) return;
     performAction(
@@ -325,6 +370,24 @@ export default function Home() {
   const dailyFocus = getDailyFocus(state, setupLocked);
   const lowestStock = [...state.inventory].sort((a, b) => a.stock / a.capacity - b.stock / b.capacity)[0];
   const stockRatio = lowestStock ? Math.round((lowestStock.stock / Math.max(1, lowestStock.capacity)) * 100) : 0;
+  const completedOpeningTasks = openingTasks.filter((task) => task.status === "done").length;
+  const activeDepotOrders = (state.depotOrders ?? []).filter((order) => order.status !== "shelved").length;
+  const flowPhase = setupLocked
+    ? "Kurulum"
+    : activeDepotOrders > 0
+      ? "Koli / Raf"
+      : state.lastDayReport
+        ? "Gün Sonucu"
+        : "Eczane İçi";
+  const flowDetail = setupLocked
+    ? `${completedOpeningTasks}/${openingTasks.length} açılış görevi`
+    : activeDepotOrders > 0
+      ? `${activeDepotOrders} koli teslim alanında`
+      : state.lastDayReport
+        ? `${state.lastDayReport.soldUnits} satış · ${state.lastDayReport.missedUnits} kaçan`
+        : lowestStock
+          ? `${lowestStock.name} rafı %${stockRatio}`
+          : "Raf ve personel hazır";
 
   return (
     <>
@@ -393,6 +456,15 @@ export default function Home() {
           <p>{dailyFocus.detail}</p>
         </section>
 
+        <section className="world-flow-rail" aria-label="Oyun akışı">
+          {["Kurulum", "Sipariş/Koli", "Eczane İçi", "Gün Sonucu"].map((step) => (
+            <span className={flowPhase === step || (flowPhase === "Koli / Raf" && step === "Sipariş/Koli") ? "active" : ""} key={step}>
+              {step}
+            </span>
+          ))}
+          <strong>{flowDetail}</strong>
+        </section>
+
         <aside className="world-side world-side-left">
           <section className="world-panel">
             <div className="world-panel-head">
@@ -459,48 +531,55 @@ export default function Home() {
         </aside>
 
         <aside className={`world-side world-side-right ${commandDeckOpen ? "is-open" : ""}`}>
-          <nav className="world-module-dock" aria-label="Oyun modülleri">
-            {moduleItems.map(({ id, label }) => (
-            <button
-              className={`${activeModule === id ? "active" : ""} ${setupLocked && id !== "eczane" ? "locked" : ""}`}
-              disabled={setupLocked && id !== "eczane"}
-              key={id}
-              onClick={() => selectModule(id)}
-            >
-              <ClipboardList size={16} aria-hidden="true" />
-              {label}
-            </button>
-          ))}
-          </nav>
+          {commandDeckOpen && (
+            <>
+              <nav className="world-module-dock" aria-label="Oyun modülleri">
+                {moduleItems.map(({ id, label }) => (
+                  <button
+                    className={`${activeModule === id ? "active" : ""} ${setupLocked && id !== "eczane" ? "locked" : ""}`}
+                    disabled={setupLocked && id !== "eczane"}
+                    key={id}
+                    onClick={() => selectModule(id)}
+                  >
+                    <ClipboardList size={16} aria-hidden="true" />
+                    {label}
+                  </button>
+                ))}
+              </nav>
 
-          <section className="world-module-panel">
-            {setupLocked ? (
-                <OpeningTasks
-                  state={state}
-                  setState={setState}
-                  tasks={openingTasks}
-                  setTasks={setOpeningTasks}
-                  setActionResult={setActionResult}
-                />
-              ) : (
-                <GameModules
-                  activeModule={activeModule}
-                  state={state}
-                  onBuyInventory={buyStock}
-                  onAdvanceDay={advanceDay}
-                  onShelfFocus={(focus) => performAction("Raf odağı değişti", "Satış dağılımı bir sonraki gün bu odağa göre değişecek.", (current) => changeShelfFocus(current, focus))}
-                  onAssignStaff={assignTask}
-                  onHireStaff={hire}
-                  onFireStaff={fire}
-                  onRaiseStaff={raise}
-                  onSgkControl={sgkControl}
-                  onChamberApproval={chamberApproval}
-                  onMarketplaceBuy={marketplaceBuy}
-                  onMarketplaceSell={marketplaceSell}
-                  onPayDebt={payDebt}
-                />
-              )}
-          </section>
+              <section className="world-module-panel">
+                {setupLocked ? (
+                  <OpeningTasks
+                    state={state}
+                    setState={setState}
+                    tasks={openingTasks}
+                    setTasks={setOpeningTasks}
+                    setActionResult={setActionResult}
+                  />
+                ) : (
+                  <GameModules
+                    activeModule={activeModule}
+                    state={state}
+                    onBuyInventory={buyStock}
+                    onOrderDepotBox={orderDepotBox}
+                    onOpenDepotBox={openBox}
+                    onShelveDepotBox={shelveBox}
+                    onAdvanceDay={advanceDay}
+                    onShelfFocus={(focus) => performAction("Raf odağı değişti", "Satış dağılımı bir sonraki gün bu odağa göre değişecek.", (current) => changeShelfFocus(current, focus))}
+                    onAssignStaff={assignTask}
+                    onHireStaff={hire}
+                    onFireStaff={fire}
+                    onRaiseStaff={raise}
+                    onSgkControl={sgkControl}
+                    onChamberApproval={chamberApproval}
+                    onMarketplaceBuy={marketplaceBuy}
+                    onMarketplaceSell={marketplaceSell}
+                    onPayDebt={payDebt}
+                  />
+                )}
+              </section>
+            </>
+          )}
         </aside>
 
         <section className={`world-bottom-strip ${commandDeckOpen ? "is-open" : ""}`}>

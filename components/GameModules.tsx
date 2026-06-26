@@ -7,6 +7,7 @@ import {
   Repeat2,
   Receipt,
   ReceiptText,
+  PackageOpen,
   ShoppingCart,
   UsersRound
 } from "lucide-react";
@@ -19,7 +20,7 @@ import {
   shelfFocusLabels
 } from "@/game/engine";
 import { getShelfProducts, productLabelModeText } from "@/data/retailProducts";
-import type { GameState, LedgerEntry, PurchasePayment, ShelfFocus } from "@/game/types";
+import type { DepotOrder, GameState, LedgerEntry, PurchasePayment, ShelfFocus } from "@/game/types";
 
 export type ModuleId = "eczane" | "depo" | "stok" | "sgk" | "personel" | "finans" | "pazar";
 
@@ -27,6 +28,9 @@ type GameModulesProps = {
   activeModule: ModuleId;
   state: GameState;
   onBuyInventory: (categoryId: string, payment: PurchasePayment) => void;
+  onOrderDepotBox: (categoryId: string, payment: PurchasePayment) => void;
+  onOpenDepotBox: (orderId: string) => void;
+  onShelveDepotBox: (orderId: string) => void;
   onAdvanceDay: () => void;
   onShelfFocus: (focus: ShelfFocus) => void;
   onAssignStaff: (personId: string, taskId: string) => void;
@@ -51,6 +55,13 @@ function ledgerStatusLabel(status: LedgerEntry["status"]) {
   if (status === "paid") return "Ödendi";
   if (status === "overdue") return "Aksadı";
   return "Açık";
+}
+
+function depotOrderStatusLabel(status: DepotOrder["status"]) {
+  if (status === "delivered") return "Teslim alanında";
+  if (status === "opened") return "Açıldı";
+  if (status === "shelved") return "Rafa alındı";
+  return "Siparişte";
 }
 
 function LedgerList({ title, entries, emptyLabel }: { title: string; entries: LedgerEntry[]; emptyLabel: string }) {
@@ -82,6 +93,9 @@ export function GameModules({
   activeModule,
   state,
   onBuyInventory,
+  onOrderDepotBox,
+  onOpenDepotBox,
+  onShelveDepotBox,
   onAdvanceDay,
   onShelfFocus,
   onAssignStaff,
@@ -99,60 +113,149 @@ export function GameModules({
   const lowestStock = [...state.inventory].sort((a, b) => a.stock / a.capacity - b.stock / b.capacity)[0];
 
   if (activeModule === "depo") {
+    const activeOrders = (state.depotOrders ?? []).filter((order) => order.status !== "shelved");
+    const completedOrders = (state.depotOrders ?? []).filter((order) => order.status === "shelved").slice(0, 3);
+    const recommendedItem = lowestStock ?? state.inventory[0];
+
     return (
       <section className="module-surface">
         <div className="module-head">
           <div>
             <h2>Depo</h2>
-            <p>Ürün al, rafı doldur. Peşin alım kasayı düşürür; vadeli alım depo borcunu büyütür.</p>
+            <p>Sipariş ver, koliyi aç, ürünleri rafa al. Vade kararı kasayı bugün değil, ödeme gününü belirler.</p>
           </div>
           <ShoppingCart size={22} aria-hidden="true" />
         </div>
-        <div className="trade-grid">
-          {state.inventory.map((item) => {
-            return (
-              <article className="trade-card" key={item.id}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <span>
-                    Stok {item.stock}/{item.capacity} · Talep {item.demand}/gün
-                  </span>
-                </div>
-                <div className="product-chip-row">
-                  {getShelfProducts(item.id).slice(0, 5).map((product) => (
-                    <span key={product.id} style={{ borderColor: product.color }}>
-                      {product.label}
-                      <em>{productLabelModeText[product.labelMode]}</em>
-                    </span>
-                  ))}
-                </div>
-                <div className="stock-meter">
-                  <i style={{ width: `${stockRatio(item.stock, item.capacity)}%` }} />
-                </div>
-                <small>
-                  Kategori vade alışkanlığı {item.defaultTermDays} gün · miat riski {item.expiryRisk}/100
-                </small>
-                <div className="preview-line term-preview">
-                  {purchaseOptions.map((payment) => {
-                    const quote = getPurchaseQuote(state, item.id, 10, payment);
-                    return (
-                      <span key={payment}>
-                        {purchasePaymentLabels[payment]}: {formatMoney(quote?.amount ?? 0)}
-                        {payment === "cash" ? " bugün" : ` · ${quote?.dueLabel ?? "vade"}`}
+        <div className="depot-workflow">
+          <article>
+            <span>1</span>
+            <strong>Sipariş ekranı</strong>
+            <p>Eksik rafı seç, 45/60/90 gün veya peşin iskonto ile koli oluştur.</p>
+          </article>
+          <article>
+            <span>2</span>
+            <strong>Koli açma</strong>
+            <p>Teslim alanındaki koliyi aç; hangi marka/etken madde geldiğini gör.</p>
+          </article>
+          <article>
+            <span>3</span>
+            <strong>Rafa yerleştir</strong>
+            <p>Açılan koliyi stok alanına işle; raf sağlığı ve satış kapasitesi artsın.</p>
+          </article>
+        </div>
+        {recommendedItem && (
+          <div className="depot-recommendation">
+            <PackageOpen size={18} aria-hidden="true" />
+            <div>
+              <span>Önerilen sipariş</span>
+              <strong>{recommendedItem.name} rafı %{stockRatio(recommendedItem.stock, recommendedItem.capacity)} dolu.</strong>
+            </div>
+          </div>
+        )}
+        <div className="box-order-board">
+          <section>
+            <h3>Yeni Sipariş Fişi</h3>
+            <div className="trade-grid compact">
+              {state.inventory.map((item) => {
+                return (
+                  <article className="trade-card box-order-card" key={item.id}>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>
+                        Stok {item.stock}/{item.capacity} · Talep {item.demand}/gün
                       </span>
-                    );
-                  })}
-                </div>
-                <div className="payment-button-grid">
-                  {purchaseOptions.map((payment) => (
-                    <button disabled={item.stock >= item.capacity} key={payment} onClick={() => onBuyInventory(item.id, payment)}>
-                      {purchasePaymentLabels[payment]}
+                    </div>
+                    <div className="product-chip-row">
+                      {getShelfProducts(item.id).slice(0, 4).map((product) => (
+                        <span key={product.id} style={{ borderColor: product.color }}>
+                          {product.label}
+                          <em>{productLabelModeText[product.labelMode]}</em>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="stock-meter">
+                      <i style={{ width: `${stockRatio(item.stock, item.capacity)}%` }} />
+                    </div>
+                    <div className="preview-line term-preview">
+                      {purchaseOptions.map((payment) => {
+                        const quote = getPurchaseQuote(state, item.id, 12, payment);
+                        return (
+                          <span key={payment}>
+                            {purchasePaymentLabels[payment]}: {formatMoney(quote?.amount ?? 0)}
+                            {payment === "cash" ? " bugün" : ` · ${quote?.dueLabel ?? "vade"}`}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <div className="payment-button-grid">
+                      {purchaseOptions.map((payment) => (
+                        <button disabled={item.stock >= item.capacity} key={payment} onClick={() => onOrderDepotBox(item.id, payment)}>
+                          Koli sipariş et · {purchasePaymentLabels[payment]}
+                        </button>
+                      ))}
+                    </div>
+                    <button className="quick-buy-button" disabled={item.stock >= item.capacity} onClick={() => onBuyInventory(item.id, "term-45")}>
+                      Acil raf takviyesi
                     </button>
-                  ))}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+          <section>
+            <h3>Teslim Alanı / Koliler</h3>
+            <div className="depot-box-stack">
+              {activeOrders.length ? (
+                activeOrders.map((order) => (
+                  <article className={`depot-box-card ${order.status}`} key={order.id}>
+                    <div className="depot-box-visual">
+                      <span>{order.boxCode}</span>
+                      <b>{order.units} adet</b>
+                    </div>
+                    <div>
+                      <strong>{order.categoryName}</strong>
+                      <small>
+                        {order.paymentLabel} · {formatMoney(order.amount)}
+                        {order.payment === "cash" ? " · peşin" : ` · gün ${order.dueDay}`}
+                      </small>
+                      <em>{depotOrderStatusLabel(order.status)}</em>
+                    </div>
+                    {order.status === "opened" && (
+                      <div className="box-reveal-list">
+                        {order.revealItems.map((item) => (
+                          <span key={`${order.id}-${item}`}>{item}</span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="button-row">
+                      <button disabled={order.status !== "delivered"} onClick={() => onOpenDepotBox(order.id)}>
+                        Koliyi aç
+                      </button>
+                      <button disabled={order.status !== "opened"} onClick={() => onShelveDepotBox(order.id)}>
+                        Rafa al
+                      </button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="empty-box-state">
+                  <PackageOpen size={28} aria-hidden="true" />
+                  <strong>Teslim alanı boş</strong>
+                  <span>Sol taraftan koli siparişi ver; teslim edilince burada açılır.</span>
                 </div>
-              </article>
-            );
-          })}
+              )}
+            </div>
+            {completedOrders.length > 0 && (
+              <div className="depot-history">
+                <strong>Son rafa alınanlar</strong>
+                {completedOrders.map((order) => (
+                  <span key={`${order.id}-done`}>
+                    {order.categoryName} · {order.units} adet · {order.paymentLabel}
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       </section>
     );
