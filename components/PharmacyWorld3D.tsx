@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useRef, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
 import { Html, OrbitControls, Text } from "@react-three/drei";
 import { BoxGeometry, DoubleSide } from "three";
@@ -9,6 +9,7 @@ import { getShelfProducts } from "@/data/retailProducts";
 import { roleLabels, staffTasks } from "@/data/staff";
 import type { ModuleId } from "@/components/GameModules";
 import type { DayPhase, GameState, InventoryCategory, LocationType, StaffRole } from "@/game/types";
+import { getRoutePose, worldRoutes, type WorldActor, type WorldRoute } from "@/game/worldEngine";
 
 type PharmacyWorld3DProps = {
   state: GameState;
@@ -18,6 +19,8 @@ type PharmacyWorld3DProps = {
 };
 
 type Vec3 = [number, number, number];
+type ActorSelectHandler = (actor: WorldActor) => void;
+type WorldView = "street" | "interior";
 
 const kindColors = {
   prescription: "#eef5f2",
@@ -25,14 +28,6 @@ const kindColors = {
   dermo: "#dcefff",
   medical: "#e8e6dd"
 };
-
-const zonePositions = {
-  idle: [-0.15, 0, 2.52],
-  counter: [-1.7, 0, 0.08],
-  sgk: [3.08, 0, -0.18],
-  stock: [-4.18, 0, 0.06],
-  dermo: [-2.18, 0, -0.12]
-} satisfies Record<string, Vec3>;
 
 const phaseLighting: Record<DayPhase, { sky: string; ambient: number; key: number }> = {
   morning: { sky: "#91d7cf", ambient: 0.74, key: 2.45 },
@@ -51,6 +46,20 @@ const staffUniformColors: Record<StaffRole, string> = {
   cashier: "#6f5b94",
   stock: "#5e765f"
 };
+
+const moduleIds = ["eczane", "depo", "stok", "sgk", "personel", "finans", "pazar"] as const satisfies readonly ModuleId[];
+
+const actorKindLabels: Record<WorldActor["kind"], string> = {
+  pharmacist: "Eczacı",
+  staff: "Personel",
+  patient: "Hasta",
+  courier: "Depo"
+};
+
+function toModuleId(value?: string): ModuleId | null {
+  if (!value) return null;
+  return moduleIds.includes(value as ModuleId) ? (value as ModuleId) : null;
+}
 
 type DioramaLandmark = {
   color: string;
@@ -229,6 +238,22 @@ function taskZone(taskId?: string) {
   if (taskId.includes("dermo")) return "dermo";
   if (taskId.includes("counter") || taskId.includes("patient")) return "counter";
   return "idle";
+}
+
+function routeForTask(taskId?: string, worldView: WorldView = "street"): WorldRoute {
+  const zone = taskZone(taskId);
+  if (worldView === "interior") {
+    if (zone === "sgk") return worldRoutes.interiorStaffSgk;
+    if (zone === "stock") return worldRoutes.interiorStaffStock;
+    if (zone === "dermo") return worldRoutes.interiorStaffDermo;
+    if (zone === "counter") return worldRoutes.interiorStaffCounter;
+    return worldRoutes.interiorStaffIdle;
+  }
+  if (zone === "sgk") return worldRoutes.staffSgk;
+  if (zone === "stock") return worldRoutes.staffStock;
+  if (zone === "dermo") return worldRoutes.staffDermo;
+  if (zone === "counter") return worldRoutes.staffCounter;
+  return worldRoutes.staffIdle;
 }
 
 function taskLabel(taskId?: string) {
@@ -693,76 +718,210 @@ function HumanoidAvatar({
   );
 }
 
+function MovingAvatar({
+  actor,
+  accentColor,
+  bodyColor,
+  hairColor,
+  impatient,
+  initial,
+  jacket,
+  label,
+  offset,
+  onSelectActor,
+  roleBadge,
+  route,
+  scale = 1,
+  skinTone,
+  speed
+}: {
+  actor: WorldActor;
+  accentColor?: string;
+  bodyColor: string;
+  hairColor: string;
+  impatient?: boolean;
+  initial?: string;
+  jacket?: boolean;
+  label?: string;
+  offset: number;
+  onSelectActor: ActorSelectHandler;
+  roleBadge?: string;
+  route: WorldRoute;
+  scale?: number;
+  skinTone: string;
+  speed: number;
+}) {
+  const ref = useRef<Group>(null);
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    const pose = getRoutePose(route, clock.elapsedTime * speed + offset);
+    ref.current.position.set(pose.position[0], pose.position[1] + Math.sin(clock.elapsedTime * 6 + offset * 12) * 0.025, pose.position[2]);
+    ref.current.rotation.y = pose.rotationY;
+  });
+
+  const handleClick = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    onSelectActor(actor);
+  };
+
+  const handlePointerOver = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    document.body.style.cursor = "pointer";
+  };
+
+  const handlePointerOut = () => {
+    document.body.style.cursor = "";
+  };
+
+  return (
+    <group
+      onClick={handleClick}
+      onPointerOut={handlePointerOut}
+      onPointerOver={handlePointerOver}
+      ref={ref}
+      scale={[scale, scale, scale]}
+    >
+      <HumanoidAvatar
+        accentColor={accentColor}
+        bodyColor={bodyColor}
+        hairColor={hairColor}
+        impatient={impatient}
+        initial={initial}
+        jacket={jacket}
+        label={label}
+        roleBadge={roleBadge}
+        skinTone={skinTone}
+      />
+    </group>
+  );
+}
+
 function StaffAvatar({
   index,
   name,
   role,
   roleLabel,
-  taskId
+  taskId,
+  person,
+  onSelectActor,
+  worldView
 }: {
   index: number;
   name: string;
   role: StaffRole;
   roleLabel: string;
   taskId?: string;
+  person: GameState["staff"][number];
+  onSelectActor: ActorSelectHandler;
+  worldView: WorldView;
 }) {
-  const ref = useRef<Group>(null);
-  const zone = taskZone(taskId);
-  const base = zonePositions[zone];
-  const spread: Vec3 = [base[0] + index * 0.24, base[1], base[2] + (index % 2) * 0.25];
   const bodyColor = staffUniformColors[role] ?? "#b11e2b";
-
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    ref.current.position.y = Math.sin(clock.elapsedTime * 2.6 + index) * 0.025;
-    ref.current.rotation.y = Math.sin(clock.elapsedTime * 0.8 + index) * 0.08;
-  });
+  const label = taskLabel(taskId);
+  const actor: WorldActor = {
+    id: `staff-${person.id}`,
+    kind: "staff",
+    title: name,
+    subtitle: roleLabel,
+    status: label,
+    detail:
+      taskZone(taskId) === "sgk"
+        ? "SGK dosyası ve reçete akışını takip ediyor; uyum skoru burada yükselir."
+        : taskZone(taskId) === "stock"
+          ? "Depo teslimi ve raf eksiklerini tamamlıyor; kaçan satış riskini azaltır."
+          : taskZone(taskId) === "dermo"
+            ? "Dermo ve OTC önerileriyle sepet değerini ve memnuniyeti artırır."
+            : "Banko ve hasta trafiğini dengeler; kuyruk uzarsa memnuniyet düşer.",
+    module: taskZone(taskId) === "sgk" ? "sgk" : taskZone(taskId) === "stock" ? "depo" : taskZone(taskId) === "dermo" ? "pazar" : "personel",
+    stats: [
+      { label: "Hız", value: person.speed },
+      { label: "Dikkat", value: person.attention },
+      { label: "Moral", value: person.morale },
+      { label: "Performans", value: person.performance }
+    ]
+  };
 
   return (
-    <group ref={ref} position={spread} scale={[0.86, 0.86, 0.86]}>
-      <HumanoidAvatar
-        accentColor={bodyColor}
-        bodyColor={bodyColor}
-        hairColor={hairColors[index % hairColors.length]}
-        jacket
-        skinTone={skinTones[index % skinTones.length]}
-      />
-    </group>
+    <MovingAvatar
+      accentColor={bodyColor}
+      actor={actor}
+      bodyColor={bodyColor}
+      hairColor={hairColors[index % hairColors.length] ?? "#2a211e"}
+      jacket
+      label={index < 2 ? roleLabel : undefined}
+      offset={index * 0.19}
+      onSelectActor={onSelectActor}
+      roleBadge={roleLabel.slice(0, 3).toLocaleUpperCase("tr-TR")}
+      route={routeForTask(taskId, worldView)}
+      scale={0.9}
+      skinTone={skinTones[index % skinTones.length] ?? "#e7b68b"}
+      speed={0.028 + index * 0.002}
+    />
   );
 }
 
-function CustomerAvatar({ index, impatient }: { index: number; impatient: boolean }) {
-  const ref = useRef<Group>(null);
-  const x = -1.8 + index * 0.36;
-  const z = 2.28 + (index % 2) * 0.18 + Math.floor(index / 2) * 0.1;
-
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    ref.current.position.y = Math.sin(clock.elapsedTime * 3 + index * 0.7) * 0.025;
-    ref.current.rotation.y = Math.sin(clock.elapsedTime * 1.2 + index) * 0.16;
-  });
+function CustomerAvatar({
+  index,
+  impatient,
+  onSelectActor,
+  state,
+  worldView
+}: {
+  index: number;
+  impatient: boolean;
+  onSelectActor: ActorSelectHandler;
+  state: GameState;
+  worldView: WorldView;
+}) {
+  const actor: WorldActor = {
+    id: `patient-${index}`,
+    kind: "patient",
+    title: impatient ? "Bekleyen hasta" : "Hasta",
+    subtitle: impatient ? "Kuyruk sabrı düşük" : "Reçete / OTC ihtiyacı",
+    status: impatient ? "Çok bekledi, kaçma riski var" : state.setupCompleted ? "Bankoya yöneliyor" : "Açılışı bekliyor",
+    detail: state.setupCompleted
+      ? "Trafik, raf doluluğu ve personel hızı satışa dönüşüp dönüşmeyeceğini belirler."
+      : "Sıfırdan kurulum bitmeden satış açılamaz; hasta trafiği bekler ama gelir yazmaz.",
+    module: "eczane",
+    stats: [
+      { label: "Trafik", value: state.traffic },
+      { label: "Memnuniyet", value: state.satisfaction },
+      { label: "Kaçan", value: state.lastDayReport?.missedUnits ?? 0 }
+    ]
+  };
 
   return (
-    <group ref={ref} position={[x, 0, z]} scale={[0.92, 0.92, 0.92]}>
-      <HumanoidAvatar
-        accentColor="#ede3c7"
-        bodyColor={impatient ? "#c55336" : customerColors[index % customerColors.length]}
-        hairColor={hairColors[(index + 2) % hairColors.length]}
-        impatient={impatient}
-        skinTone={skinTones[(index + 1) % skinTones.length]}
-      />
-    </group>
+    <MovingAvatar
+      accentColor="#ede3c7"
+      actor={actor}
+      bodyColor={impatient ? "#c55336" : (customerColors[index % customerColors.length] ?? "#2f7a83")}
+      hairColor={hairColors[(index + 2) % hairColors.length] ?? "#2a211e"}
+      impatient={impatient}
+      offset={0.08 + index * 0.105}
+      onSelectActor={onSelectActor}
+      route={worldView === "interior" ? worldRoutes.interiorPatientQueue : worldRoutes.patientQueue}
+      scale={0.9}
+      skinTone={skinTones[(index + 1) % skinTones.length] ?? "#e7b68b"}
+      speed={0.023 + index * 0.001}
+    />
   );
 }
 
-function CustomerQueue({ state }: { state: GameState }) {
+function CustomerQueue({ onSelectActor, state, worldView }: { onSelectActor: ActorSelectHandler; state: GameState; worldView: WorldView }) {
   const missed = state.lastDayReport?.missedUnits ?? 0;
-  const queueCount = state.setupCompleted ? Math.min(9, Math.max(2, Math.round(state.traffic / 18) + Math.floor(missed / 5))) : 0;
+  const queueCount = state.setupCompleted ? Math.min(10, Math.max(2, Math.round(state.traffic / 17) + Math.floor(missed / 5))) : Math.min(4, Math.max(1, Math.round(state.traffic / 30)));
 
   return (
     <group>
       {Array.from({ length: queueCount }, (_, index) => (
-        <CustomerAvatar impatient={index >= queueCount - Math.min(3, missed)} index={index} key={index} />
+        <CustomerAvatar
+          impatient={index >= queueCount - Math.min(3, missed)}
+          index={index}
+          key={index}
+          onSelectActor={onSelectActor}
+          state={state}
+          worldView={worldView}
+        />
       ))}
     </group>
   );
@@ -903,11 +1062,13 @@ function StreetTree({ position, scale = 1 }: { position: Vec3; scale?: number })
 
 function PharmacyFacade({
   activeModule,
+  onEnterPharmacy,
   onSelectModule,
   state,
   preset
 }: {
   activeModule: ModuleId;
+  onEnterPharmacy: () => void;
   onSelectModule: (module: ModuleId) => void;
   state: GameState;
   preset: StreetPreset;
@@ -916,6 +1077,10 @@ function PharmacyFacade({
   const signText = facadeName.length > 18 ? "KIRMIZI TABELA" : facadeName.toLocaleUpperCase("tr-TR");
   const shelfFill = Math.max(0.08, Math.min(1, state.stockHealth / 100));
   const displayCount = Math.max(4, Math.round(shelfFill * 12));
+  const handleEnter = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    onEnterPharmacy();
+  };
 
   return (
     <ClickableModule module="eczane" onSelectModule={onSelectModule}>
@@ -924,7 +1089,12 @@ function PharmacyFacade({
         <SketchBox color="#4f5b55" position={[0, 2.82, 0.02]} scale={[2.9, 0.18, 0.72]} />
         <SketchBox color="#f7fbf7" position={[-0.44, 1.02, 0.32]} opacity={0.72} outlineOpacity={0.28} scale={[0.98, 0.88, 0.04]} />
         <SketchBox color="#dceff0" position={[0.72, 0.96, 0.32]} opacity={0.68} outlineOpacity={0.28} scale={[0.66, 0.96, 0.04]} />
-        <SketchBox color="#263530" position={[0.72, 0.48, 0.36]} opacity={0.9} outlineOpacity={0.4} scale={[0.34, 0.88, 0.05]} />
+        <group onClick={handleEnter}>
+          <SketchBox color="#263530" position={[0.72, 0.48, 0.36]} opacity={0.9} outlineOpacity={0.4} scale={[0.34, 0.88, 0.05]} />
+          <Html center distanceFactor={5.2} position={[0.72, 1.06, 0.54]}>
+            <span className="world-entry-label">İçeri gir</span>
+          </Html>
+        </group>
         <SketchBox color="#eef2ea" position={[-0.58, 0.78, 0.37]} scale={[0.16, 0.72, 0.05]} />
         <SketchBox color="#eef2ea" position={[-0.3, 0.78, 0.37]} scale={[0.16, 0.72, 0.05]} />
         <SketchBox color="#e51823" emissive="#8c101a" position={[0, 2.18, 0.36]} scale={[2.1, 0.34, 0.07]} />
@@ -984,6 +1154,108 @@ function DeliveryVan({ active, position }: { active: boolean; position: Vec3 }) 
   );
 }
 
+function MovingDeliveryVan({
+  active,
+  onSelectActor
+}: {
+  active: boolean;
+  onSelectActor: ActorSelectHandler;
+}) {
+  const ref = useRef<Group>(null);
+  const actor: WorldActor = {
+    id: "courier-depot",
+    kind: "courier",
+    title: "Depo kuryesi",
+    subtitle: "Ecza deposu teslimatı",
+    status: "Vadeli sipariş ve eksik raf turunda",
+    detail: "Depo aracı eczaneye stok getirir. 90 gün, 60 gün, 45 gün ve peşin iskonto kararları nakit akışını doğrudan etkiler.",
+    module: "depo",
+    stats: [
+      { label: "Teslimat", value: active ? "öncelikli" : "standart" },
+      { label: "Vade", value: "45-90 gün" },
+      { label: "Raf sağlığı", value: "stok" }
+    ]
+  };
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    const pose = getRoutePose(worldRoutes.courierLoop, clock.elapsedTime * 0.018 + 0.2);
+    ref.current.position.set(pose.position[0], pose.position[1], pose.position[2]);
+    ref.current.rotation.y = pose.rotationY + Math.PI / 2;
+  });
+
+  const handleClick = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    onSelectActor(actor);
+  };
+
+  return (
+    <group onClick={handleClick} ref={ref} scale={[0.9, 0.9, 0.9]}>
+      <DeliveryVan active={active} position={[0, 0, 0]} />
+    </group>
+  );
+}
+
+function RouteDots({ color, route }: { color: string; route: WorldRoute }) {
+  return (
+    <group>
+      {route.map((point, index) => (
+        <mesh key={`${point.join("-")}-${index}`} position={[point[0], 0.018, point[2]]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.01, 16]} />
+          <meshToonMaterial color={color} opacity={0.48} transparent />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function InteriorShelfRack({
+  item,
+  index,
+  onSelectModule
+}: {
+  item: InventoryCategory;
+  index: number;
+  onSelectModule: (module: ModuleId) => void;
+}) {
+  const products = getShelfProducts(item.id);
+  const fillRatio = Math.max(0.04, Math.min(1, item.stock / item.capacity));
+  const boxCount = Math.max(2, Math.round(fillRatio * 10));
+  const x = -2.72 + (index % 4) * 1.52;
+  const y = 0.72 + Math.floor(index / 4) * 1.08;
+  const z = -2.38;
+  const handleClick = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    onSelectModule(item.kind === "prescription" ? "sgk" : "stok");
+  };
+
+  return (
+    <group onClick={handleClick} position={[x, y, z]}>
+      <SketchBox color="#879188" position={[0, 0, 0]} scale={[1.18, 0.92, 0.28]} />
+      {[0, 1, 2].map((row) => (
+        <SketchBox color="#f7f8f2" key={row} outlineOpacity={0.14} position={[0, -0.3 + row * 0.3, 0.19]} scale={[1.28, 0.035, 0.12]} />
+      ))}
+      {Array.from({ length: boxCount }, (_, productIndex) => {
+        const product = products[productIndex % Math.max(1, products.length)];
+        const row = Math.floor(productIndex / 4);
+        const col = productIndex % 4;
+        return (
+          <SketchBox
+            color={product?.color ?? kindColors[item.kind]}
+            key={`${item.id}-interior-${productIndex}`}
+            outlineOpacity={0.16}
+            position={[-0.42 + col * 0.28, -0.26 + row * 0.3, 0.34]}
+            scale={[0.14, 0.18, 0.08]}
+          />
+        );
+      })}
+      <Html center distanceFactor={5.4} position={[0, 0.56, 0.35]}>
+        <span className="world-hotspot">{item.name}</span>
+      </Html>
+    </group>
+  );
+}
+
 function DistrictObject({ preset }: { preset: StreetPreset }) {
   if (preset.districtObject === "water") {
     return (
@@ -1008,25 +1280,55 @@ function DistrictObject({ preset }: { preset: StreetPreset }) {
 
 function StreetLevelWorld({
   activeModule,
+  onEnterPharmacy,
+  onSelectActor,
   onSelectModule,
   state
 }: {
   activeModule: ModuleId;
+  onEnterPharmacy: () => void;
+  onSelectActor: ActorSelectHandler;
   onSelectModule: (module: ModuleId) => void;
   state: GameState;
 }) {
   const preset = streetPresets[state.locationType] ?? streetPresets.neighborhood;
+  const pharmacistActor: WorldActor = {
+    id: "pharmacist-player",
+    kind: "pharmacist",
+    title: state.pharmacistName,
+    subtitle: state.pharmacyName,
+    status: state.setupCompleted ? "Sokak, banko ve raf akışını yönetiyor" : "Açılış görevlerini tamamlıyor",
+    detail: state.setupCompleted
+      ? "Eczacı ana karakterdir; satış, SGK uyumu, depo vadesi ve personel moralini aynı gün içinde dengeler."
+      : "Kurulum bitmeden satış açılmaz. Ruhsat, POS, depo ve raf görevleri tamamlandığında gün simülasyonu başlar.",
+    module: "eczane",
+    stats: [
+      { label: "Level", value: state.level },
+      { label: "XP", value: state.xp },
+      { label: "Enerji", value: state.energy }
+    ]
+  };
 
   return (
     <group>
-      <SketchPlane color={preset.ground} position={[0, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[10.8, 8.2, 1]} />
-      <SketchPlane color={preset.road} position={[0.22, -0.025, 1.18]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[10.6, 1.48, 1]} />
-      <SketchPlane color={preset.sidewalk} position={[-0.45, -0.015, 0.1]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[8.7, 1.24, 1]} />
+      <SketchPlane color={preset.ground} position={[0, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[16.8, 11.5, 1]} />
+      <SketchPlane color={preset.road} position={[0.12, -0.025, 1.24]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[15.8, 1.55, 1]} />
+      <SketchPlane color={preset.road} position={[-5.85, -0.024, -0.95]} rotation={[-Math.PI / 2, 0, Math.PI / 2.08]} scale={[5.2, 1.08, 1]} />
+      <SketchPlane color={preset.sidewalk} position={[-0.65, -0.015, 0.1]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[13.2, 1.34, 1]} />
       <SketchPlane color="#f6f4e7" position={[-0.15, -0.006, 1.8]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[0.32, 1.15, 1]} />
       <SketchPlane color="#f6f4e7" position={[0.55, -0.005, 1.8]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[0.32, 1.15, 1]} />
       <SketchPlane color="#f6f4e7" position={[1.25, -0.004, 1.8]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[0.32, 1.15, 1]} />
+      <RouteDots color="#fff8d8" route={worldRoutes.patientQueue} />
+      <RouteDots color="#e6b665" route={worldRoutes.courierLoop} />
+      <RouteDots color="#e51823" route={worldRoutes.pharmacistPatrol} />
 
-      <PharmacyFacade activeModule={activeModule} onSelectModule={onSelectModule} preset={preset} state={state} />
+      <PharmacyFacade
+        activeModule={activeModule}
+        onEnterPharmacy={onEnterPharmacy}
+        onSelectModule={onSelectModule}
+        preset={preset}
+        state={state}
+      />
 
       <StreetBuilding
         active={activeModule === "depo"}
@@ -1034,13 +1336,11 @@ function StreetLevelWorld({
         label={preset.depotLabel}
         module="depo"
         onSelectModule={onSelectModule}
-        position={[-4.05, 0, -0.18]}
-        scale={[1.42, 1.26, 0.58]}
+        position={[-6.25, 0, -0.18]}
+        scale={[1.58, 1.34, 0.62]}
         signColor="#fff1d4"
       />
-      <ClickableModule module="depo" onSelectModule={onSelectModule}>
-        <DeliveryVan active={activeModule === "depo"} position={[-3.38, 0, 0.95]} />
-      </ClickableModule>
+      <MovingDeliveryVan active={activeModule === "depo"} onSelectActor={onSelectActor} />
 
       <StreetBuilding
         active={activeModule === "sgk"}
@@ -1048,33 +1348,162 @@ function StreetLevelWorld({
         label={preset.sgkLabel}
         module="sgk"
         onSelectModule={onSelectModule}
-        position={[3.3, 0, -0.62]}
-        scale={[1.52, 1.66, 0.58]}
+        position={[4.45, 0, -0.62]}
+        scale={[1.58, 1.72, 0.6]}
         signColor="#f5f8fb"
       />
-      <SketchBox color="#ffffff" position={[3.3, 1.46, -0.29]} scale={[0.42, 0.32, 0.035]} />
-      <Html center distanceFactor={5.4} position={[3.3, 1.46, -0.24]}>
+      <SketchBox color="#ffffff" position={[4.45, 1.5, -0.29]} scale={[0.46, 0.34, 0.035]} />
+      <Html center distanceFactor={5.4} position={[4.45, 1.5, -0.24]}>
         <span className="world-sgk-sign">SGK</span>
       </Html>
 
       <DistrictObject preset={preset} />
-      <StreetBuilding color="#d4d7ca" label="Apartman" onSelectModule={onSelectModule} position={[-5.6, 0, -2.1]} scale={[1.22, 2.05, 0.56]} />
-      <StreetBuilding color="#e8ded3" label="Köşe Esnaf" onSelectModule={onSelectModule} position={[4.92, 0, 0.55]} scale={[1.05, 1.18, 0.52]} />
+      <StreetBuilding color="#d4d7ca" label="Apartman" onSelectModule={onSelectModule} position={[-7.72, 0, -2.02]} scale={[1.28, 2.12, 0.58]} />
+      <StreetBuilding color="#e8ded3" label="Köşe Esnaf" onSelectModule={onSelectModule} position={[6.85, 0, 0.5]} scale={[1.14, 1.24, 0.54]} />
+      <StreetBuilding color="#dfe4dd" label="Yan Sokak" onSelectModule={onSelectModule} position={[-4.92, 0, -3.28]} scale={[1.3, 1.54, 0.5]} />
+      <StreetBuilding color="#f0dfd6" label="Kafe" onSelectModule={onSelectModule} position={[0.2, 0, -3.52]} scale={[1.12, 1.2, 0.5]} />
 
-      <StreetLamp position={[-2.65, 0, 1.72]} />
-      <StreetLamp position={[2.32, 0, 1.42]} />
-      <StreetTree position={[-4.85, 0, 1.65]} scale={0.78} />
-      <StreetTree position={[4.65, 0, -1.72]} scale={0.86} />
+      <StreetLamp position={[-3.05, 0, 1.78]} />
+      <StreetLamp position={[2.85, 0, 1.42]} />
+      <StreetLamp position={[5.08, 0, 1.62]} />
+      <StreetTree position={[-5.1, 0, 1.72]} scale={0.78} />
+      <StreetTree position={[4.75, 0, -1.72]} scale={0.86} />
+      <StreetTree position={[7.05, 0, -1.22]} scale={0.72} />
 
-      <group position={[0.18, 0, 3.2]} rotation={[0, Math.PI - 0.08, 0]} scale={[1.12, 1.12, 1.12]}>
-        <HumanoidAvatar
-          accentColor="#f6f2eb"
-          bodyColor="#b21f2d"
-          hairColor="#2b2630"
-          jacket
-          skinTone="#e7b68b"
-        />
+      <MovingAvatar
+        accentColor="#f6f2eb"
+        actor={pharmacistActor}
+        bodyColor="#b21f2d"
+        hairColor="#2b2630"
+        jacket
+        offset={0.05}
+        onSelectActor={onSelectActor}
+        route={worldRoutes.pharmacistPatrol}
+        scale={1.12}
+        skinTone="#e7b68b"
+        speed={0.017}
+      />
+    </group>
+  );
+}
+
+function PharmacyInteriorWorld({
+  activeModule,
+  onExitPharmacy,
+  onSelectActor,
+  onSelectModule,
+  state
+}: {
+  activeModule: ModuleId;
+  onExitPharmacy: () => void;
+  onSelectActor: ActorSelectHandler;
+  onSelectModule: (module: ModuleId) => void;
+  state: GameState;
+}) {
+  const shelfItems = state.inventory.slice(0, 8);
+  const shelfFill = Math.max(0.08, Math.min(1, state.stockHealth / 100));
+  const pharmacistActor: WorldActor = {
+    id: "pharmacist-interior",
+    kind: "pharmacist",
+    title: state.pharmacistName,
+    subtitle: "Eczane içi operasyon",
+    status: state.setupCompleted ? "Banko, raf ve SGK akışını içeriden yönetiyor" : "Açılış öncesi raf ve sistem kurulumunu yapıyor",
+    detail: "İç mekan satışın kalbidir: hasta kuyruğu, POS, raf doluluğu, SGK dosyası ve stok alanı burada okunur.",
+    module: "eczane",
+    stats: [
+      { label: "Raf", value: `%${state.stockHealth}` },
+      { label: "Memnuniyet", value: state.satisfaction },
+      { label: "Enerji", value: state.energy }
+    ]
+  };
+  const handleExit = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    onExitPharmacy();
+  };
+
+  return (
+    <group>
+      <SketchPlane color="#d8ded3" position={[0, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[7.8, 5.9, 1]} />
+      <SketchBox color="#dfe5dc" position={[0, 1.28, -2.68]} scale={[7.8, 2.56, 0.12]} />
+      <SketchBox color="#cdd5cc" position={[-3.94, 1.15, -0.2]} rotation={[0, 0.02, 0]} scale={[0.12, 2.3, 5.0]} />
+      <SketchBox color="#cfd8d2" position={[3.94, 1.15, -0.2]} rotation={[0, -0.02, 0]} scale={[0.12, 2.3, 5.0]} />
+      <SketchBox color="#4f5b55" position={[0, 2.65, -2.52]} scale={[7.95, 0.16, 0.36]} />
+      <SketchBox color="#e51823" emissive="#8c101a" position={[0, 2.22, -2.48]} scale={[2.45, 0.28, 0.08]} />
+      <Html center distanceFactor={4.8} position={[0, 2.22, -2.38]}>
+        <span className="world-facade-sign">KIRMIZI TABELA</span>
+      </Html>
+
+      <RouteDots color="#f6f4e7" route={worldRoutes.interiorPatientQueue} />
+      <RouteDots color="#e51823" route={worldRoutes.interiorPharmacistPatrol} />
+      <RouteDots color="#76a985" route={worldRoutes.interiorStaffStock} />
+
+      <ClickableModule module="stok" onSelectModule={onSelectModule}>
+        <group>
+          {shelfItems.map((item, index) => (
+            <InteriorShelfRack index={index} item={item} key={item.id} onSelectModule={onSelectModule} />
+          ))}
+        </group>
+      </ClickableModule>
+
+      <ClickableModule module="eczane" onSelectModule={onSelectModule}>
+        <group position={[-0.42, 0, 0.98]}>
+          <SketchBox active={activeModule === "eczane" || activeModule === "finans"} color="#eee7dc" position={[0, 0.46, 0]} scale={[2.72, 0.72, 0.58]} />
+          <SketchBox color="#c8bdae" position={[0.64, 0.9, -0.16]} scale={[0.5, 0.12, 0.28]} />
+          <SketchBox color="#263530" position={[0.64, 1.08, -0.16]} scale={[0.34, 0.26, 0.04]} />
+          <Html center distanceFactor={5.3} position={[-0.18, 1.02, 0.34]}>
+            <span className="world-hotspot">Banko / POS</span>
+          </Html>
+        </group>
+      </ClickableModule>
+
+      <ClickableModule module="sgk" onSelectModule={onSelectModule}>
+        <group position={[2.52, 0, -0.75]}>
+          <SketchBox active={activeModule === "sgk"} color="#d8e8ef" position={[0, 0.48, 0]} scale={[1.05, 0.72, 0.62]} />
+          <SketchBox color="#ffffff" position={[0, 0.92, 0.34]} scale={[0.72, 0.3, 0.04]} />
+          <Html center distanceFactor={5.4} position={[0, 0.94, 0.4]}>
+            <span className="world-sgk-sign">SGK</span>
+          </Html>
+          <SketchBox color="#f7fbf7" position={[-0.22, 0.96, -0.15]} scale={[0.26, 0.18, 0.08]} />
+          <SketchBox color="#f7fbf7" position={[0.12, 1.0, -0.1]} scale={[0.26, 0.18, 0.08]} />
+        </group>
+      </ClickableModule>
+
+      <ClickableModule module="depo" onSelectModule={onSelectModule}>
+        <group position={[-3.1, 0, 0.56]}>
+          <SketchBox active={activeModule === "depo"} color="#d7c8ad" position={[0, 0.62, 0]} scale={[0.98, 1.18, 0.42]} />
+          <SketchBox color="#9c8769" position={[0, 0.22, 0.36]} scale={[0.72, 0.28, 0.28]} />
+          <SketchBox color="#eadfca" position={[0.18, 0.58, 0.34]} scale={[0.52, 0.34, 0.28]} />
+          <Html center distanceFactor={5.4} position={[0, 1.32, 0.32]}>
+            <span className="world-hotspot">Stok alanı · %{Math.round(shelfFill * 100)}</span>
+          </Html>
+        </group>
+      </ClickableModule>
+
+      <group onClick={handleExit} position={[1.42, 0, 2.66]}>
+        <SketchPlane color="#263530" opacity={0.84} position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.92, 0.38, 1]} />
+        <SketchBox color="#e51823" emissive="#8c101a" position={[0, 0.08, -0.18]} scale={[0.76, 0.08, 0.06]} />
+        <Html center distanceFactor={6.2} position={[0, 0.32, -0.04]}>
+          <span className="world-entry-label">Sokağa çık</span>
+        </Html>
       </group>
+
+      <Html center distanceFactor={6.2} position={[-2.22, 2.08, -2.35]}>
+        <span className="world-building-label active">Eczane içi</span>
+      </Html>
+
+      <MovingAvatar
+        accentColor="#f6f2eb"
+        actor={pharmacistActor}
+        bodyColor="#b21f2d"
+        hairColor="#2b2630"
+        jacket
+        offset={0.12}
+        onSelectActor={onSelectActor}
+        route={worldRoutes.interiorPharmacistPatrol}
+        scale={1.04}
+        skinTone="#e7b68b"
+        speed={0.022}
+      />
     </group>
   );
 }
@@ -1220,61 +1649,144 @@ function DistrictDiorama({
 
 function StoreShell({
   activeModule,
+  onEnterPharmacy,
+  onExitPharmacy,
+  onSelectActor,
   onSelectModule,
+  sceneView,
   state
 }: {
   activeModule: ModuleId;
+  onEnterPharmacy: () => void;
+  onExitPharmacy: () => void;
+  onSelectActor: ActorSelectHandler;
   onSelectModule: (module: ModuleId) => void;
+  sceneView: WorldView;
   state: GameState;
 }) {
-  return <StreetLevelWorld activeModule={activeModule} onSelectModule={onSelectModule} state={state} />;
+  if (sceneView === "interior") {
+    return (
+      <PharmacyInteriorWorld
+        activeModule={activeModule}
+        onExitPharmacy={onExitPharmacy}
+        onSelectActor={onSelectActor}
+        onSelectModule={onSelectModule}
+        state={state}
+      />
+    );
+  }
+
+  return (
+    <StreetLevelWorld
+      activeModule={activeModule}
+      onEnterPharmacy={onEnterPharmacy}
+      onSelectActor={onSelectActor}
+      onSelectModule={onSelectModule}
+      state={state}
+    />
+  );
 }
 
 function PharmacyScene({
   activeModule,
+  onEnterPharmacy,
+  onExitPharmacy,
+  onSelectActor,
   onSelectModule,
-  setupLocked,
+  sceneView,
   state
 }: {
   activeModule: ModuleId;
+  onEnterPharmacy: () => void;
+  onExitPharmacy: () => void;
+  onSelectActor: ActorSelectHandler;
   onSelectModule: (module: ModuleId) => void;
-  setupLocked: boolean;
+  sceneView: WorldView;
   state: GameState;
 }) {
   const lighting = phaseLighting[state.dayPhase];
   const street = streetPresets[state.locationType] ?? streetPresets.neighborhood;
   const staff = useMemo(() => state.staff.slice(0, 6), [state.staff]);
+  const controlsTarget: Vec3 = sceneView === "interior" ? [-0.25, 1.05, -0.08] : [-0.42, 1.02, 0.38];
 
   return (
     <>
-      <color args={[street.sky ?? lighting.sky]} attach="background" />
+      <color args={[sceneView === "interior" ? "#d9e1d9" : (street.sky ?? lighting.sky)]} attach="background" />
       <ambientLight intensity={lighting.ambient} />
       <hemisphereLight groundColor="#6b746c" intensity={0.78} />
       <directionalLight castShadow intensity={lighting.key} position={[3.4, 6.8, 5.6]} shadow-mapSize={[1536, 1536]} />
       <pointLight color="#e51823" intensity={1.5} position={[-1.25, 2.62, -0.18]} />
       <pointLight color="#f4d36f" intensity={0.82} position={[-2.7, 1.35, 1.8]} />
-      <StoreShell activeModule={activeModule} onSelectModule={onSelectModule} state={state} />
-      {!setupLocked && <CustomerQueue state={state} />}
+      <StoreShell
+        activeModule={activeModule}
+        onEnterPharmacy={onEnterPharmacy}
+        onExitPharmacy={onExitPharmacy}
+        onSelectActor={onSelectActor}
+        onSelectModule={onSelectModule}
+        sceneView={sceneView}
+        state={state}
+      />
+      <CustomerQueue onSelectActor={onSelectActor} state={state} worldView={sceneView} />
       {staff.map((person, index) => (
         <StaffAvatar
           index={index}
           key={person.id}
           name={person.name}
+          onSelectActor={onSelectActor}
+          person={person}
           role={person.role}
           roleLabel={roleLabels[person.role]}
           taskId={person.assignedTaskId}
+          worldView={sceneView}
         />
       ))}
       <OrbitControls
         enableDamping
         enablePan={false}
-        maxDistance={7.6}
+        maxDistance={9.4}
         maxPolarAngle={Math.PI / 2.04}
-        minDistance={3.8}
+        minDistance={3.2}
         minPolarAngle={Math.PI / 3.5}
-        target={[-0.55, 1.02, 0.1]}
+        target={controlsTarget}
       />
     </>
+  );
+}
+
+function ActorCard({
+  actor,
+  onSelectModule
+}: {
+  actor: WorldActor;
+  onSelectModule: (module: ModuleId) => void;
+}) {
+  const targetModule = toModuleId(actor.module);
+
+  return (
+    <aside className="world-actor-card">
+      <header>
+        <span>{actorKindLabels[actor.kind]}</span>
+        <strong>{actor.title}</strong>
+        <em>{actor.subtitle}</em>
+      </header>
+      <p>{actor.status}</p>
+      <small>{actor.detail}</small>
+      {actor.stats && actor.stats.length > 0 && (
+        <div className="world-actor-stats">
+          {actor.stats.map((stat) => (
+            <span key={`${stat.label}-${stat.value}`}>
+              {stat.label}
+              <b>{stat.value}</b>
+            </span>
+          ))}
+        </div>
+      )}
+      {targetModule && (
+        <button onClick={() => onSelectModule(targetModule)} type="button">
+          İlgili modülü aç
+        </button>
+      )}
+    </aside>
   );
 }
 
@@ -1282,18 +1794,68 @@ export function PharmacyWorld3D({ activeModule, onSelectModule, setupLocked, sta
   const report = state.lastDayReport;
   const sold = report?.soldUnits ?? 0;
   const missed = report?.missedUnits ?? 0;
+  const [worldView, setWorldView] = useState<WorldView>("street");
+  const [selectedActor, setSelectedActor] = useState<WorldActor | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const view = new URLSearchParams(window.location.search).get("view");
+    if (view === "interior") {
+      setWorldView("interior");
+    }
+  }, []);
+
+  const defaultActor: WorldActor = {
+    id: "pharmacist-default",
+    kind: "pharmacist",
+    title: state.pharmacistName,
+    subtitle: `${state.pharmacyName} · ${worldView === "interior" ? "Eczane içi" : state.locationName}`,
+    status: setupLocked ? "Açılış görevleri tamamlanmadan satış başlamaz" : "Gün akışı sahnede çalışıyor",
+    detail: setupLocked
+      ? "Önce POS, depo anlaşması, raf ve ruhsat görevlerini kapat; sonra 08:30-19:00 günü oynat."
+      : worldView === "interior"
+        ? "İçeride banko, raf, SGK masası ve stok alanını tıklayarak operasyonu yönet. Sokağa çıkınca depo ve resmi kurum akışı görünür."
+        : "Eczacı ana karakteri, personel, hasta ve depo kuryesi tıklanabilir. Kararlar satış, SGK alacağı, POS alacağı ve depo borcuna döner.",
+    module: "eczane",
+    stats: [
+      { label: "Level", value: state.level },
+      { label: "XP", value: state.xp },
+      { label: "Enerji", value: state.energy }
+    ]
+  };
+  const actorForPanel = selectedActor ?? defaultActor;
+  const handleEnterPharmacy = () => {
+    setWorldView("interior");
+    setSelectedActor(null);
+  };
+  const handleExitPharmacy = () => {
+    setWorldView("street");
+    setSelectedActor(null);
+  };
 
   return (
     <section className="pharmacy-world">
       <Canvas camera={{ fov: 54, position: [1.55, 1.62, 5.95] }} dpr={[1, 1.7]} shadows>
         <Suspense fallback={null}>
-          <PharmacyScene activeModule={activeModule} onSelectModule={onSelectModule} setupLocked={setupLocked} state={state} />
+          <PharmacyScene
+            activeModule={activeModule}
+            onEnterPharmacy={handleEnterPharmacy}
+            onExitPharmacy={handleExitPharmacy}
+            onSelectActor={setSelectedActor}
+            onSelectModule={onSelectModule}
+            sceneView={worldView}
+            state={state}
+          />
         </Suspense>
       </Canvas>
+      <button className="world-view-toggle" onClick={worldView === "street" ? handleEnterPharmacy : handleExitPharmacy} type="button">
+        {worldView === "street" ? "Eczaneye gir" : "Sokağa çık"}
+      </button>
+      <ActorCard actor={actorForPanel} onSelectModule={onSelectModule} />
       <div className="world-readout">
         <span>{state.timeLabel}</span>
         <span>{setupLocked ? "Açılış hazırlığı" : `${sold} satış · ${missed} kaçan`}</span>
-        <span>{state.locationName}</span>
+        <span>{worldView === "interior" ? "Eczane içi" : state.locationName}</span>
       </div>
     </section>
   );

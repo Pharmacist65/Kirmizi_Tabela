@@ -120,3 +120,24 @@ Bu turda üstten bakan iç-mekan maketi ana render'dan çıkarıldı. Oyun artı
 - SGK resmi bina cephesiyle sağ tarafta ayrı landmark olarak duruyor.
 - Aktif sahnedeki tabela ve bina isimleri 3D fonta bağımlı olmadan HTML hotspot olarak çiziliyor; font yüklemesi beklenirken WebGL canvas'ın boş kalma riski düşürüldü.
 - Karakter üstü büyük görev etiketleri kaldırıldı; personel ve müşteri kalabalığı sahneyi kapatmadan akış hissi veriyor.
+
+## Aktör ve Rota Motoru Revizyonu
+
+Örnek siteden kod veya asset alınmadı; yöntem olarak tek WebGL dünya, tıklanabilir aktör state'i, rota boyunca hareket ve az DOM panel yaklaşımı uyarlandı.
+
+- Eczacı, personel, hasta ve depo kuryesi ayrı aktör tipleri olarak tanımlandı.
+- Aktörler sabit durmuyor; rota üzerinde ilerliyor, yönünü rotaya göre çeviriyor ve tıklanınca oyun içi bilgi kartını güncelliyor.
+- Personel görevi rotayı belirliyor: SGK görevi resmi kurum hattına, stok görevi depo/raf hattına, dermo görevi vitrin ve OTC hattına yaklaşıyor.
+- Sıfırdan kurulumda satış kilidi korunuyor ama hasta trafiği sahnede görünür kalıyor; oyuncu açılış görevlerinin neden önemli olduğunu görsel olarak hissediyor.
+- Depo aracı ayrı lojistik rotada çalışıyor; depo/vade kararları artık sahnede seçilebilir bir hareketli unsurla temsil ediliyor.
+- Harita ölçeği büyütüldü: SGK, depo, eczane ve yan sokak landmark'ları ayrı pozisyonlara dağıtıldı.
+
+## Eczane İçine Giriş Revizyonu
+
+Oyun artık sadece sokak cephesinde kalmıyor. Oyuncu eczane kapısından veya sabit "Eczaneye gir" butonundan iç mekana geçebiliyor.
+
+- Sokak modu: depo, SGK kurumu, yan sokak ve dış hasta trafiği görünür.
+- İç mekan modu: raflar, banko/POS, SGK işlem masası, stok alanı ve dışarı çıkış noktası görünür.
+- İçeride eczacı, personel ve hastalar ayrı iç mekan rotalarında hareket eder.
+- İç mekan rafları font yüklemesine bağımlı olmayan HTML hotspot ve kutu ürünlerle çizilir; WebGL sahnesinin boş kalma riski azaltıldı.
+- Test için `?view=interior` parametresi doğrudan iç mekan render'ını açar; normal oynanışta kapı veya buton kullanılır.

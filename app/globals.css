@@ -3193,6 +3193,129 @@ button {
   font-size: 0.9rem;
 }
 
+.world-actor-card {
+  position: absolute;
+  left: 326px;
+  bottom: 88px;
+  z-index: 7;
+  width: min(330px, calc(100vw - 742px));
+  min-width: 300px;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 8px;
+  background: rgba(24, 34, 30, 0.74);
+  color: #fff;
+  box-shadow: 0 20px 58px rgba(18, 32, 28, 0.2);
+  backdrop-filter: blur(16px) saturate(1.12);
+  padding: 12px;
+  display: grid;
+  gap: 9px;
+}
+
+.world-actor-card header {
+  display: grid;
+  gap: 3px;
+}
+
+.world-actor-card header span {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.world-actor-card strong {
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1.14;
+}
+
+.world-actor-card em {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.world-actor-card p,
+.world-actor-card small {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.world-actor-card p {
+  color: #fff8e1;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.world-actor-card small {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.8rem;
+}
+
+.world-actor-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.world-actor-stats span {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 7px;
+  color: rgba(255, 255, 255, 0.7);
+  display: grid;
+  gap: 3px;
+  font-size: 0.66rem;
+  font-weight: 850;
+}
+
+.world-actor-stats b {
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.world-actor-card button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 7px;
+  background: #b21f2d;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 950;
+}
+
+.world-actor-card button:hover {
+  background: #931724;
+}
+
+.world-view-toggle {
+  position: absolute;
+  left: 50%;
+  bottom: 48px;
+  z-index: 7;
+  min-height: 38px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 999px;
+  background: rgba(178, 31, 45, 0.94);
+  color: #fff;
+  box-shadow: 0 14px 36px rgba(20, 30, 25, 0.2);
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 950;
+  padding: 0 16px;
+}
+
+.world-view-toggle:hover {
+  background: #931724;
+}
+
 .world-brand {
   display: flex;
   gap: 12px;
@@ -3600,6 +3723,7 @@ button {
 .world-blade-sign,
 .world-van-label,
 .world-sgk-sign,
+.world-entry-label,
 .world-avatar-initial,
 .world-avatar-alert,
 .world-avatar-badge {
@@ -3661,6 +3785,14 @@ button {
 
 .world-sgk-sign {
   color: #315f93;
+}
+
+.world-entry-label {
+  border-radius: 999px;
+  background: rgba(178, 31, 45, 0.95);
+  color: #fff;
+  padding: 6px 9px;
+  font-size: 0.62rem;
 }
 
 .world-avatar-initial {
@@ -3741,6 +3873,13 @@ button {
     width: min(460px, calc(100vw - 720px));
     min-width: 330px;
   }
+
+  .world-actor-card {
+    left: 16px;
+    bottom: 96px;
+    width: 300px;
+    min-width: 0;
+  }
 }
 
 @media (max-width: 1120px) {
@@ -3776,6 +3915,10 @@ button {
   .world-focus-card {
     display: none;
   }
+
+  .world-actor-card {
+    display: none;
+  }
 }
 
 @media (max-width: 820px) {
@@ -3792,6 +3935,8 @@ button {
   .world-side,
   .world-bottom-strip,
   .world-status-ribbon,
+  .world-actor-card,
+  .world-view-toggle,
   .world-focus-card,
   .world-readout {
     position: relative;
@@ -3844,9 +3989,22 @@ button {
     justify-content: flex-start;
   }
 
+  .world-view-toggle {
+    order: 6;
+    justify-self: start;
+  }
+
   .world-focus-card {
     order: 3;
     display: grid;
+    color: #fff;
+  }
+
+  .world-actor-card {
+    order: 3;
+    display: grid;
+    width: 100%;
+    min-width: 0;
     color: #fff;
   }
 
