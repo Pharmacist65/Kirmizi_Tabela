@@ -22,5 +22,7 @@ Current implementation changes:
 - `components/GameBootLoader.tsx` owns the loading moment.
 - `game/reboot.ts` owns scenario state, hotspots and interaction rules.
 - `components/RebootGame.tsx` now focuses on UI and 3D scene composition.
+- `scripts/generate-game-assets.mjs` creates the first project-owned GLB asset set.
+- `public/assets/game/asset-manifest.json` lists the generated model files consumed by the scene.
 
 Do not copy third-party bundled source or assets. The target is to copy the discipline of the architecture, not the implementation.

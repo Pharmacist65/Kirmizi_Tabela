@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "agent:gameplay": "tsx scripts/gameplay-agent.ts",
+    "assets:generate": "node scripts/generate-game-assets.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

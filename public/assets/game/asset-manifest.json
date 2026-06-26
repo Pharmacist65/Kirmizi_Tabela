@@ -1,0 +1,17 @@
+{
+  "assetSet": "pharmacy-reboot-v1",
+  "source": "scripts/generate-game-assets.mjs",
+  "models": {
+    "avatar_pharmacist_red": "/assets/game/models/avatar_pharmacist_red.glb",
+    "avatar_pharmacist_white": "/assets/game/models/avatar_pharmacist_white.glb",
+    "avatar_pharmacist_black": "/assets/game/models/avatar_pharmacist_black.glb",
+    "avatar_customer": "/assets/game/models/avatar_customer.glb",
+    "street_base": "/assets/game/models/street_base.glb",
+    "street_props": "/assets/game/models/street_props.glb",
+    "pharmacy_facade": "/assets/game/models/pharmacy_facade.glb",
+    "depot_warehouse": "/assets/game/models/depot_warehouse.glb",
+    "sgk_office": "/assets/game/models/sgk_office.glb",
+    "bank_branch": "/assets/game/models/bank_branch.glb",
+    "delivery_truck": "/assets/game/models/delivery_truck.glb"
+  }
+}
