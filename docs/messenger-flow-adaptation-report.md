@@ -110,3 +110,13 @@ Eczane artık tek başına yüzen bir oda gibi kalmamalı. Senaryo seçimi sahne
 SGK binası eczane içinde durmayacak; dış dünyada ayrı bir resmi kurum landmark'ı olacak ve tıklanınca SGK modülünü açacak. Eczane içindeki SGK noktası sadece dosya/işlem masası olarak kalacak.
 
 Depo da ayrı bir landmark olacak; sokak/tedarik hattında "Ecza Deposu", "Nöbetçi Depo", "AVM Mal Kabul" veya "Uzak Depo" gibi senaryo diline göre değişecek. Depo motoru bu landmark'ın yanında konumlanacak.
+
+## Sokak Seviyesi Kamera Revizyonu
+
+Bu turda üstten bakan iç-mekan maketi ana render'dan çıkarıldı. Oyun artık eczanenin bulunduğu sokakta, oyuncu avatarının arkasından bakan düşük kamera ile açılıyor.
+
+- Eczane vitrin, kapı, tabela ve ön raf görünümüyle ayrı bir bina olarak kuruldu.
+- Depo bina ve teslim aracıyla sol lojistik nokta olarak ayrıldı.
+- SGK resmi bina cephesiyle sağ tarafta ayrı landmark olarak duruyor.
+- Aktif sahnedeki tabela ve bina isimleri 3D fonta bağımlı olmadan HTML hotspot olarak çiziliyor; font yüklemesi beklenirken WebGL canvas'ın boş kalma riski düşürüldü.
+- Karakter üstü büyük görev etiketleri kaldırıldı; personel ve müşteri kalabalığı sahneyi kapatmadan akış hissi veriyor.

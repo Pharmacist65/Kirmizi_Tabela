@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useMemo, useRef, type ReactNode } from "react";
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
 import { Html, OrbitControls, Text } from "@react-three/drei";
+import { BoxGeometry, DoubleSide } from "three";
 import type { Group } from "three";
 import { getShelfProducts } from "@/data/retailProducts";
 import { roleLabels, staffTasks } from "@/data/staff";
@@ -26,11 +27,11 @@ const kindColors = {
 };
 
 const zonePositions = {
-  idle: [-0.55, 0, 1.34],
-  counter: [0.1, 0, 0.68],
-  sgk: [3.65, 0, -1.25],
-  stock: [-4.05, 0, -1.42],
-  dermo: [-3.36, 0, -2.34]
+  idle: [-0.15, 0, 2.52],
+  counter: [-1.7, 0, 0.08],
+  sgk: [3.08, 0, -0.18],
+  stock: [-4.18, 0, 0.06],
+  dermo: [-2.18, 0, -0.12]
 } satisfies Record<string, Vec3>;
 
 const phaseLighting: Record<DayPhase, { sky: string; ambient: number; key: number }> = {
@@ -279,6 +280,219 @@ function ZoneLabel({ label, position }: { label: string; position: Vec3 }) {
   );
 }
 
+function SketchBox({
+  active,
+  children,
+  color,
+  emissive,
+  opacity = 1,
+  outline = "#1c2b27",
+  outlineOpacity = 0.34,
+  position,
+  rotation = [0, 0, 0],
+  scale
+}: {
+  active?: boolean;
+  children?: ReactNode;
+  color: string;
+  emissive?: string;
+  opacity?: number;
+  outline?: string;
+  outlineOpacity?: number;
+  position: Vec3;
+  rotation?: Vec3;
+  scale: Vec3;
+}) {
+  const edgeGeometry = useMemo(() => new BoxGeometry(1, 1, 1), []);
+
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh castShadow receiveShadow scale={scale}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshToonMaterial
+          color={color}
+          emissive={emissive ?? (active ? "#79131f" : "#000000")}
+          emissiveIntensity={active ? 0.14 : 0}
+          opacity={opacity}
+          transparent={opacity < 1}
+        />
+      </mesh>
+      <lineSegments scale={[scale[0] * 1.006, scale[1] * 1.006, scale[2] * 1.006]}>
+        <edgesGeometry args={[edgeGeometry, 16]} />
+        <lineBasicMaterial color={outline} opacity={outlineOpacity} transparent />
+      </lineSegments>
+      {children}
+    </group>
+  );
+}
+
+function SketchPlane({
+  color,
+  opacity = 1,
+  position,
+  rotation = [0, 0, 0],
+  scale
+}: {
+  color: string;
+  opacity?: number;
+  position: Vec3;
+  rotation?: Vec3;
+  scale: Vec3;
+}) {
+  return (
+    <mesh receiveShadow position={position} rotation={rotation} scale={scale}>
+      <planeGeometry args={[1, 1]} />
+      <meshToonMaterial color={color} opacity={opacity} side={DoubleSide} transparent={opacity < 1} />
+    </mesh>
+  );
+}
+
+type StreetPreset = {
+  sky: string;
+  ground: string;
+  road: string;
+  sidewalk: string;
+  pharmacyWall: string;
+  awning: [string, string];
+  depotLabel: string;
+  depotTone: string;
+  sgkLabel: string;
+  sgkTone: string;
+  contextLabel: string;
+  contextTone: string;
+  contextScale: Vec3;
+  districtObject?: "hospital" | "mall" | "water" | "campus" | "factory" | "field";
+};
+
+const streetPresets: Record<LocationType, StreetPreset> = {
+  neighborhood: {
+    sky: "#78d2ce",
+    ground: "#93a096",
+    road: "#5b6662",
+    sidewalk: "#d9ded2",
+    pharmacyWall: "#dfe6db",
+    awning: ["#f7fbf7", "#2e9eb0"],
+    depotLabel: "Ecza Deposu",
+    depotTone: "#d9c9ae",
+    sgkLabel: "SGK Kurumu",
+    sgkTone: "#d8e9f0",
+    contextLabel: "Aile Sağlığı",
+    contextTone: "#e6f0e2",
+    contextScale: [1.45, 1.36, 0.52]
+  },
+  hospital: {
+    sky: "#86d6d1",
+    ground: "#8e9992",
+    road: "#535c59",
+    sidewalk: "#dde0d8",
+    pharmacyWall: "#e8ece1",
+    awning: ["#ffffff", "#b21f2d"],
+    depotLabel: "Nöbetçi Depo",
+    depotTone: "#d9c7ad",
+    sgkLabel: "SGK Teslim",
+    sgkTone: "#dcecf5",
+    contextLabel: "Hastane",
+    contextTone: "#f2e7e7",
+    contextScale: [2.1, 2.18, 0.64],
+    districtObject: "hospital"
+  },
+  avenue: {
+    sky: "#74cbc9",
+    ground: "#8d9991",
+    road: "#444e4b",
+    sidewalk: "#d5d9cf",
+    pharmacyWall: "#e1e5dc",
+    awning: ["#fff8ee", "#b21f2d"],
+    depotLabel: "Şehir Deposu",
+    depotTone: "#d8c4aa",
+    sgkLabel: "SGK Ofisi",
+    sgkTone: "#d8e8ef",
+    contextLabel: "Banka / Cadde",
+    contextTone: "#e6ebf1",
+    contextScale: [1.62, 1.72, 0.5]
+  },
+  mall: {
+    sky: "#80d4d0",
+    ground: "#8d9490",
+    road: "#515a57",
+    sidewalk: "#deded7",
+    pharmacyWall: "#e4e7df",
+    awning: ["#ffffff", "#287a83"],
+    depotLabel: "AVM Mal Kabul",
+    depotTone: "#d7cbb8",
+    sgkLabel: "SGK Ofisi",
+    sgkTone: "#d8e9f0",
+    contextLabel: "AVM Girişi",
+    contextTone: "#e8edf2",
+    contextScale: [2.15, 2.05, 0.7],
+    districtObject: "mall"
+  },
+  rural: {
+    sky: "#8bd6c4",
+    ground: "#7f9a68",
+    road: "#746b58",
+    sidewalk: "#d8d2bc",
+    pharmacyWall: "#e5e2d1",
+    awning: ["#f7fbf7", "#5e765f"],
+    depotLabel: "Uzak Depo",
+    depotTone: "#cfb98f",
+    sgkLabel: "İlçe SGK",
+    sgkTone: "#dbe7e9",
+    contextLabel: "İlçe Meydanı",
+    contextTone: "#eadfca",
+    contextScale: [1.5, 1.16, 0.52],
+    districtObject: "field"
+  },
+  touristic: {
+    sky: "#70d4d2",
+    ground: "#86a77d",
+    road: "#5d6460",
+    sidewalk: "#e1d8c4",
+    pharmacyWall: "#ece4d6",
+    awning: ["#ffffff", "#2e9eb0"],
+    depotLabel: "Sezon Deposu",
+    depotTone: "#d8c8aa",
+    sgkLabel: "SGK Noktası",
+    sgkTone: "#d9e9ef",
+    contextLabel: "Otel / Sahil",
+    contextTone: "#f2e1d7",
+    contextScale: [1.78, 1.76, 0.56],
+    districtObject: "water"
+  },
+  university: {
+    sky: "#7dd0ca",
+    ground: "#879d87",
+    road: "#53605b",
+    sidewalk: "#d9ddd2",
+    pharmacyWall: "#e4e8df",
+    awning: ["#ffffff", "#315f93"],
+    depotLabel: "Şehir Deposu",
+    depotTone: "#d8c5ab",
+    sgkLabel: "SGK Ofisi",
+    sgkTone: "#d9e9f0",
+    contextLabel: "Kampüs",
+    contextTone: "#e3eaf4",
+    contextScale: [1.9, 1.7, 0.58],
+    districtObject: "campus"
+  },
+  industrial: {
+    sky: "#79c8c2",
+    ground: "#7d877c",
+    road: "#46504c",
+    sidewalk: "#d4d2c8",
+    pharmacyWall: "#dfe2d9",
+    awning: ["#ffffff", "#b87520"],
+    depotLabel: "Sanayi Deposu",
+    depotTone: "#cdb99e",
+    sgkLabel: "SGK Ofisi",
+    sgkTone: "#d7e5ea",
+    contextLabel: "Sanayi Sitesi",
+    contextTone: "#d6ddd8",
+    contextScale: [1.9, 1.42, 0.62],
+    districtObject: "factory"
+  }
+};
+
 function ProductBox({ color, label, position }: { color: string; label: string; position: Vec3 }) {
   const labelColor = textColor(color);
   return (
@@ -446,9 +660,9 @@ function HumanoidAvatar({
       </mesh>
 
       {initial && (
-        <Text anchorX="center" anchorY="middle" color={jacket ? "#1f2f26" : "#ffffff"} fontSize={0.095} position={[0, 0.51, 0.176]}>
-          {initial}
-        </Text>
+        <Html center distanceFactor={8.4} position={[0, 0.51, 0.18]}>
+          <span className={`world-avatar-initial ${jacket ? "light" : ""}`}>{initial}</span>
+        </Html>
       )}
 
       {!jacket && (
@@ -459,15 +673,15 @@ function HumanoidAvatar({
       )}
 
       {impatient && (
-        <Text anchorX="center" anchorY="middle" color="#b21f2d" fontSize={0.13} position={[0.19, 1.02, 0]}>
-          !
-        </Text>
+        <Html center distanceFactor={8.4} position={[0.19, 1.02, 0]}>
+          <span className="world-avatar-alert">!</span>
+        </Html>
       )}
 
       {roleBadge && (
-        <Text anchorX="center" anchorY="middle" color="#ffffff" fontSize={0.052} maxWidth={0.34} position={[0, 0.26, 0.115]}>
-          {roleBadge}
-        </Text>
+        <Html center distanceFactor={8.4} position={[0, 0.26, 0.14]}>
+          <span className="world-avatar-badge">{roleBadge}</span>
+        </Html>
       )}
 
       {label && (
@@ -505,16 +719,12 @@ function StaffAvatar({
   });
 
   return (
-    <group ref={ref} position={spread}>
+    <group ref={ref} position={spread} scale={[0.86, 0.86, 0.86]}>
       <HumanoidAvatar
         accentColor={bodyColor}
         bodyColor={bodyColor}
         hairColor={hairColors[index % hairColors.length]}
-        initial={name.slice(0, 1)}
         jacket
-        label={`${roleLabel} · ${taskLabel(taskId)}`}
-        labelOffset={[0, 1.12 + (index % 2) * 0.16, 0]}
-        roleBadge={zone === "sgk" ? "SGK" : zone === "stock" ? "STOK" : "BANKO"}
         skinTone={skinTones[index % skinTones.length]}
       />
     </group>
@@ -533,7 +743,7 @@ function CustomerAvatar({ index, impatient }: { index: number; impatient: boolea
   });
 
   return (
-    <group ref={ref} position={[x, 0, z]}>
+    <group ref={ref} position={[x, 0, z]} scale={[0.92, 0.92, 0.92]}>
       <HumanoidAvatar
         accentColor="#ede3c7"
         bodyColor={impatient ? "#c55336" : customerColors[index % customerColors.length]}
@@ -589,6 +799,282 @@ function DeliveryScooter({
       <Text anchorX="center" anchorY="middle" color="#7e1420" fontSize={0.14} position={[0, 0.42, 0.16]}>
         DEPO
       </Text>
+    </group>
+  );
+}
+
+function ClickableModule({
+  children,
+  module,
+  onSelectModule
+}: {
+  children: ReactNode;
+  module: ModuleId;
+  onSelectModule: (module: ModuleId) => void;
+}) {
+  const handleClick = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    onSelectModule(module);
+  };
+
+  return <group onClick={handleClick}>{children}</group>;
+}
+
+function StreetBuilding({
+  active,
+  color,
+  label,
+  module,
+  onSelectModule,
+  position,
+  scale,
+  signColor = "#f7f8f2"
+}: {
+  active?: boolean;
+  color: string;
+  label: string;
+  module?: ModuleId;
+  onSelectModule: (module: ModuleId) => void;
+  position: Vec3;
+  scale: Vec3;
+  signColor?: string;
+}) {
+  const body = (
+    <group position={position}>
+      <SketchBox active={active} color={color} position={[0, scale[1] / 2, 0]} scale={scale} />
+      <SketchBox color="#555f59" position={[0, scale[1] + 0.12, 0.02]} scale={[scale[0] * 1.1, 0.18, scale[2] * 1.08]} />
+      <SketchBox color={signColor} position={[0, scale[1] * 0.8, scale[2] * 0.54]} scale={[scale[0] * 0.78, 0.26, 0.035]} />
+      <Html center distanceFactor={5.4} position={[0, scale[1] * 0.8, scale[2] * 0.62]}>
+        <span className="world-sign-label">{label}</span>
+      </Html>
+      {[-0.32, 0, 0.32].map((x) => (
+        <SketchBox
+          color="#b8d3d5"
+          key={x}
+          opacity={0.7}
+          outlineOpacity={0.22}
+          position={[x * scale[0], scale[1] * 0.45, scale[2] * 0.54]}
+          scale={[0.16, 0.22, 0.026]}
+        />
+      ))}
+      <Html center distanceFactor={5.2} position={[0, scale[1] + 0.5, scale[2] * 0.18]}>
+        <span className={`world-building-label ${active ? "active" : ""}`}>{label}</span>
+      </Html>
+    </group>
+  );
+
+  if (!module) return body;
+
+  return (
+    <ClickableModule module={module} onSelectModule={onSelectModule}>
+      {body}
+    </ClickableModule>
+  );
+}
+
+function StreetLamp({ position }: { position: Vec3 }) {
+  return (
+    <group position={position}>
+      <SketchBox color="#343f3b" position={[0, 0.62, 0]} scale={[0.04, 1.24, 0.04]} />
+      <SketchBox color="#343f3b" position={[0.18, 1.23, 0]} rotation={[0, 0, 0.2]} scale={[0.36, 0.04, 0.04]} />
+      <mesh castShadow position={[0.4, 1.2, 0]}>
+        <sphereGeometry args={[0.09, 14, 14]} />
+        <meshToonMaterial color="#fff4bd" emissive="#f5cf61" emissiveIntensity={0.45} />
+      </mesh>
+    </group>
+  );
+}
+
+function StreetTree({ position, scale = 1 }: { position: Vec3; scale?: number }) {
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <SketchBox color="#765d3f" position={[0, 0.28, 0]} scale={[0.08, 0.56, 0.08]} />
+      <mesh castShadow position={[0, 0.78, 0]}>
+        <sphereGeometry args={[0.32, 12, 12]} />
+        <meshToonMaterial color="#3e9361" />
+      </mesh>
+      <mesh castShadow position={[0.2, 0.96, -0.05]}>
+        <sphereGeometry args={[0.22, 12, 12]} />
+        <meshToonMaterial color="#2f7d5c" />
+      </mesh>
+    </group>
+  );
+}
+
+function PharmacyFacade({
+  activeModule,
+  onSelectModule,
+  state,
+  preset
+}: {
+  activeModule: ModuleId;
+  onSelectModule: (module: ModuleId) => void;
+  state: GameState;
+  preset: StreetPreset;
+}) {
+  const facadeName = (state.pharmacyName || "Kırmızı Tabela").replace(/\s+Eczanesi$/i, "");
+  const signText = facadeName.length > 18 ? "KIRMIZI TABELA" : facadeName.toLocaleUpperCase("tr-TR");
+  const shelfFill = Math.max(0.08, Math.min(1, state.stockHealth / 100));
+  const displayCount = Math.max(4, Math.round(shelfFill * 12));
+
+  return (
+    <ClickableModule module="eczane" onSelectModule={onSelectModule}>
+      <group position={[-1.25, 0, -0.78]} rotation={[0, -0.03, 0]}>
+        <SketchBox active={activeModule === "eczane"} color={preset.pharmacyWall} position={[0, 1.34, 0]} scale={[2.68, 2.68, 0.56]} />
+        <SketchBox color="#4f5b55" position={[0, 2.82, 0.02]} scale={[2.9, 0.18, 0.72]} />
+        <SketchBox color="#f7fbf7" position={[-0.44, 1.02, 0.32]} opacity={0.72} outlineOpacity={0.28} scale={[0.98, 0.88, 0.04]} />
+        <SketchBox color="#dceff0" position={[0.72, 0.96, 0.32]} opacity={0.68} outlineOpacity={0.28} scale={[0.66, 0.96, 0.04]} />
+        <SketchBox color="#263530" position={[0.72, 0.48, 0.36]} opacity={0.9} outlineOpacity={0.4} scale={[0.34, 0.88, 0.05]} />
+        <SketchBox color="#eef2ea" position={[-0.58, 0.78, 0.37]} scale={[0.16, 0.72, 0.05]} />
+        <SketchBox color="#eef2ea" position={[-0.3, 0.78, 0.37]} scale={[0.16, 0.72, 0.05]} />
+        <SketchBox color="#e51823" emissive="#8c101a" position={[0, 2.18, 0.36]} scale={[2.1, 0.34, 0.07]} />
+        <Html center distanceFactor={4.6} position={[0, 2.18, 0.46]}>
+          <span className="world-facade-sign">{signText}</span>
+        </Html>
+        <SketchBox color="#e51823" emissive="#e51823" position={[1.54, 1.5, 0.08]} rotation={[0, -Math.PI / 2, 0]} scale={[0.58, 0.58, 0.08]} />
+        <Html center distanceFactor={4.6} position={[1.58, 1.5, 0.08]}>
+          <span className="world-blade-sign">E</span>
+        </Html>
+        {Array.from({ length: 9 }, (_, index) => (
+          <SketchBox
+            color={index % 2 === 0 ? preset.awning[0] : preset.awning[1]}
+            key={index}
+            position={[-1.02 + index * 0.25, 1.57, 0.5]}
+            scale={[0.14, 0.11, 0.42]}
+          />
+        ))}
+        <group position={[-0.78, 0.53, 0.42]}>
+          {Array.from({ length: displayCount }, (_, index) => {
+            const row = Math.floor(index / 4);
+            const col = index % 4;
+            const item = state.inventory[index % state.inventory.length];
+            return (
+              <SketchBox
+                color={kindColors[item.kind]}
+                key={`${item.id}-${index}`}
+                outlineOpacity={0.22}
+                position={[col * 0.18, row * 0.16, 0]}
+                scale={[0.1, 0.13, 0.06]}
+              />
+            );
+          })}
+        </group>
+        <SketchBox active={activeModule === "finans"} color="#ede3c7" position={[0.1, 0.48, 0.48]} scale={[0.48, 0.26, 0.18]} />
+        <ZoneLabel label="Banko / Satış" position={[-0.28, 1.54, 0.62]} />
+      </group>
+    </ClickableModule>
+  );
+}
+
+function DeliveryVan({ active, position }: { active: boolean; position: Vec3 }) {
+  return (
+    <group position={position} rotation={[0, 0.08, 0]}>
+      <SketchBox active={active} color={active ? "#b21f2d" : "#e9e4d8"} position={[0, 0.34, 0]} scale={[0.92, 0.46, 0.44]} />
+      <SketchBox color="#f7fbf7" position={[0.38, 0.55, 0.18]} opacity={0.78} scale={[0.32, 0.22, 0.03]} />
+      <Html center distanceFactor={5.2} position={[-0.12, 0.38, 0.28]}>
+        <span className={`world-van-label ${active ? "active" : ""}`}>DEPO</span>
+      </Html>
+      {[-0.35, 0.35].map((x) => (
+        <mesh castShadow key={x} position={[x, 0.14, 0.24]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.13, 0.035, 10, 24]} />
+          <meshToonMaterial color="#1d2622" />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function DistrictObject({ preset }: { preset: StreetPreset }) {
+  if (preset.districtObject === "water") {
+    return (
+      <>
+        <SketchPlane color="#66c7ca" opacity={0.78} position={[4.6, 0.012, -2.85]} rotation={[-Math.PI / 2, 0, -0.18]} scale={[3.5, 1.85, 1]} />
+        <StreetBuilding color={preset.contextTone} label={preset.contextLabel} onSelectModule={() => undefined} position={[1.45, 0, -2.38]} scale={preset.contextScale} />
+      </>
+    );
+  }
+
+  if (preset.districtObject === "field") {
+    return (
+      <>
+        <SketchPlane color="#b7a064" position={[1.48, 0.016, -2.9]} rotation={[-Math.PI / 2, 0, 0.12]} scale={[2.8, 1.25, 1]} />
+        <StreetBuilding color={preset.contextTone} label={preset.contextLabel} onSelectModule={() => undefined} position={[1.35, 0, -2.28]} scale={preset.contextScale} />
+      </>
+    );
+  }
+
+  return <StreetBuilding color={preset.contextTone} label={preset.contextLabel} onSelectModule={() => undefined} position={[1.42, 0, -2.38]} scale={preset.contextScale} />;
+}
+
+function StreetLevelWorld({
+  activeModule,
+  onSelectModule,
+  state
+}: {
+  activeModule: ModuleId;
+  onSelectModule: (module: ModuleId) => void;
+  state: GameState;
+}) {
+  const preset = streetPresets[state.locationType] ?? streetPresets.neighborhood;
+
+  return (
+    <group>
+      <SketchPlane color={preset.ground} position={[0, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[10.8, 8.2, 1]} />
+      <SketchPlane color={preset.road} position={[0.22, -0.025, 1.18]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[10.6, 1.48, 1]} />
+      <SketchPlane color={preset.sidewalk} position={[-0.45, -0.015, 0.1]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[8.7, 1.24, 1]} />
+      <SketchPlane color="#f6f4e7" position={[-0.15, -0.006, 1.8]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[0.32, 1.15, 1]} />
+      <SketchPlane color="#f6f4e7" position={[0.55, -0.005, 1.8]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[0.32, 1.15, 1]} />
+      <SketchPlane color="#f6f4e7" position={[1.25, -0.004, 1.8]} rotation={[-Math.PI / 2, 0, -0.03]} scale={[0.32, 1.15, 1]} />
+
+      <PharmacyFacade activeModule={activeModule} onSelectModule={onSelectModule} preset={preset} state={state} />
+
+      <StreetBuilding
+        active={activeModule === "depo"}
+        color={preset.depotTone}
+        label={preset.depotLabel}
+        module="depo"
+        onSelectModule={onSelectModule}
+        position={[-4.05, 0, -0.18]}
+        scale={[1.42, 1.26, 0.58]}
+        signColor="#fff1d4"
+      />
+      <ClickableModule module="depo" onSelectModule={onSelectModule}>
+        <DeliveryVan active={activeModule === "depo"} position={[-3.38, 0, 0.95]} />
+      </ClickableModule>
+
+      <StreetBuilding
+        active={activeModule === "sgk"}
+        color={preset.sgkTone}
+        label={preset.sgkLabel}
+        module="sgk"
+        onSelectModule={onSelectModule}
+        position={[3.3, 0, -0.62]}
+        scale={[1.52, 1.66, 0.58]}
+        signColor="#f5f8fb"
+      />
+      <SketchBox color="#ffffff" position={[3.3, 1.46, -0.29]} scale={[0.42, 0.32, 0.035]} />
+      <Html center distanceFactor={5.4} position={[3.3, 1.46, -0.24]}>
+        <span className="world-sgk-sign">SGK</span>
+      </Html>
+
+      <DistrictObject preset={preset} />
+      <StreetBuilding color="#d4d7ca" label="Apartman" onSelectModule={onSelectModule} position={[-5.6, 0, -2.1]} scale={[1.22, 2.05, 0.56]} />
+      <StreetBuilding color="#e8ded3" label="Köşe Esnaf" onSelectModule={onSelectModule} position={[4.92, 0, 0.55]} scale={[1.05, 1.18, 0.52]} />
+
+      <StreetLamp position={[-2.65, 0, 1.72]} />
+      <StreetLamp position={[2.32, 0, 1.42]} />
+      <StreetTree position={[-4.85, 0, 1.65]} scale={0.78} />
+      <StreetTree position={[4.65, 0, -1.72]} scale={0.86} />
+
+      <group position={[0.18, 0, 3.2]} rotation={[0, Math.PI - 0.08, 0]} scale={[1.12, 1.12, 1.12]}>
+        <HumanoidAvatar
+          accentColor="#f6f2eb"
+          bodyColor="#b21f2d"
+          hairColor="#2b2630"
+          jacket
+          skinTone="#e7b68b"
+        />
+      </group>
     </group>
   );
 }
@@ -741,59 +1227,7 @@ function StoreShell({
   onSelectModule: (module: ModuleId) => void;
   state: GameState;
 }) {
-  const facadeName = (state.pharmacyName || "Kırmızı Tabela").replace(/\s+Eczanesi$/i, "");
-  const signText = facadeName.length > 22 ? "ECZANE" : facadeName;
-
-  return (
-    <group>
-      <DistrictDiorama activeModule={activeModule} locationType={state.locationType} onSelectModule={onSelectModule} />
-      <mesh receiveShadow position={[0, -0.02, 0]}>
-        <boxGeometry args={[10.9, 0.04, 7.7]} />
-        <meshStandardMaterial color="#e7eadf" roughness={0.84} />
-      </mesh>
-      <mesh receiveShadow position={[0, 1.12, -3.64]}>
-        <boxGeometry args={[10.9, 2.24, 0.16]} />
-        <meshStandardMaterial color="#fbf8ed" roughness={0.72} />
-      </mesh>
-      <mesh receiveShadow position={[-5.38, 0.92, 0]}>
-        <boxGeometry args={[0.16, 1.84, 7.7]} />
-        <meshStandardMaterial color="#ece6dd" roughness={0.78} />
-      </mesh>
-      <mesh receiveShadow position={[5.38, 0.92, -1.02]}>
-        <boxGeometry args={[0.16, 1.84, 5.25]} />
-        <meshStandardMaterial color="#eef2ec" roughness={0.78} />
-      </mesh>
-      <mesh position={[0, 2.48, -3.48]} scale={[3.05, 0.38, 0.12]}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#e51823" emissive="#a0121b" emissiveIntensity={0.28} roughness={0.46} />
-      </mesh>
-      <Text anchorX="center" anchorY="middle" color="#ffffff" fontSize={0.23} maxWidth={2.78} position={[0, 2.49, -3.39]}>
-        {signText}
-      </Text>
-      <mesh position={[5.06, 1.55, -1.62]} rotation={[0, -Math.PI / 2, 0]}>
-        <boxGeometry args={[1, 0.9, 0.12]} />
-        <meshStandardMaterial color="#e51823" emissive="#e51823" emissiveIntensity={0.38} roughness={0.4} />
-      </mesh>
-      <Text anchorX="center" anchorY="middle" color="#ffffff" fontSize={0.62} position={[4.97, 1.55, -1.62]} rotation={[0, -Math.PI / 2, 0]}>
-        E
-      </Text>
-      {state.inventory.map((item, index) => (
-        <ShelfUnit item={item} index={index} key={item.id} onSelectModule={onSelectModule} />
-      ))}
-      <SelectableBox active={activeModule === "eczane"} color="#cfd6ce" module="eczane" onSelectModule={onSelectModule} position={[0.12, 0.48, 0.16]} scale={[3.22, 0.86, 0.94]} />
-      <Text anchorX="center" anchorY="middle" color="#27322a" fontSize={0.18} position={[0.12, 0.99, 0.65]}>
-        BANKO
-      </Text>
-      <SelectableBox active={activeModule === "sgk"} color="#e4eef7" module="sgk" onSelectModule={onSelectModule} position={[3.68, 0.48, -1.2]} scale={[1.34, 0.86, 0.88]} />
-      <SelectableBox active={activeModule === "finans"} color="#ede3c7" module="finans" onSelectModule={onSelectModule} position={[1.95, 0.55, 0.88]} scale={[0.62, 0.34, 0.44]} />
-      <SelectableBox active={activeModule === "pazar"} color="#dde9e2" module="pazar" onSelectModule={onSelectModule} position={[3.72, 0.36, 1.58]} scale={[1.22, 0.62, 0.68]} />
-      <SelectableBox active={activeModule === "personel"} color="#f1d8d7" module="personel" onSelectModule={onSelectModule} position={[-2.25, 0.08, 0.9]} scale={[1.5, 0.05, 0.78]} />
-      <ZoneLabel label="Raflar" position={[-2.22, 2.38, -2.72]} />
-      <ZoneLabel label="Banko" position={[0.12, 1.42, 0.8]} />
-      <ZoneLabel label="SGK dosya" position={[3.68, 1.24, -0.95]} />
-      <ZoneLabel label="Finans" position={[1.95, 1.05, 1.12]} />
-    </group>
-  );
+  return <StreetLevelWorld activeModule={activeModule} onSelectModule={onSelectModule} state={state} />;
 }
 
 function PharmacyScene({
@@ -808,15 +1242,17 @@ function PharmacyScene({
   state: GameState;
 }) {
   const lighting = phaseLighting[state.dayPhase];
+  const street = streetPresets[state.locationType] ?? streetPresets.neighborhood;
   const staff = useMemo(() => state.staff.slice(0, 6), [state.staff]);
 
   return (
     <>
-      <color args={[lighting.sky]} attach="background" />
+      <color args={[street.sky ?? lighting.sky]} attach="background" />
       <ambientLight intensity={lighting.ambient} />
-      <directionalLight castShadow intensity={lighting.key} position={[4.5, 8, 5.5]} shadow-mapSize={[1024, 1024]} />
-      <pointLight color="#e51823" intensity={1.3} position={[0, 2.72, -2.4]} />
-      <pointLight color="#f4d36f" intensity={0.75} position={[-4.6, 1.3, 3.6]} />
+      <hemisphereLight groundColor="#6b746c" intensity={0.78} />
+      <directionalLight castShadow intensity={lighting.key} position={[3.4, 6.8, 5.6]} shadow-mapSize={[1536, 1536]} />
+      <pointLight color="#e51823" intensity={1.5} position={[-1.25, 2.62, -0.18]} />
+      <pointLight color="#f4d36f" intensity={0.82} position={[-2.7, 1.35, 1.8]} />
       <StoreShell activeModule={activeModule} onSelectModule={onSelectModule} state={state} />
       {!setupLocked && <CustomerQueue state={state} />}
       {staff.map((person, index) => (
@@ -832,11 +1268,11 @@ function PharmacyScene({
       <OrbitControls
         enableDamping
         enablePan={false}
-        maxDistance={10.5}
-        maxPolarAngle={Math.PI / 2.45}
-        minDistance={6.1}
-        minPolarAngle={Math.PI / 5}
-        target={[-0.12, 0.78, -0.25]}
+        maxDistance={7.6}
+        maxPolarAngle={Math.PI / 2.04}
+        minDistance={3.8}
+        minPolarAngle={Math.PI / 3.5}
+        target={[-0.55, 1.02, 0.1]}
       />
     </>
   );
@@ -849,7 +1285,7 @@ export function PharmacyWorld3D({ activeModule, onSelectModule, setupLocked, sta
 
   return (
     <section className="pharmacy-world">
-      <Canvas camera={{ fov: 40, position: [6.6, 5.35, 7.15] }} dpr={[1, 1.7]} shadows>
+      <Canvas camera={{ fov: 54, position: [1.55, 1.62, 5.95] }} dpr={[1, 1.7]} shadows>
         <Suspense fallback={null}>
           <PharmacyScene activeModule={activeModule} onSelectModule={onSelectModule} setupLocked={setupLocked} state={state} />
         </Suspense>
