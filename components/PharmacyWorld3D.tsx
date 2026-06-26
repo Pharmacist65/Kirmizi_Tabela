@@ -7,7 +7,7 @@ import type { Group } from "three";
 import { getShelfProducts } from "@/data/retailProducts";
 import { roleLabels, staffTasks } from "@/data/staff";
 import type { ModuleId } from "@/components/GameModules";
-import type { DayPhase, GameState, InventoryCategory } from "@/game/types";
+import type { DayPhase, GameState, InventoryCategory, StaffRole } from "@/game/types";
 
 type PharmacyWorld3DProps = {
   state: GameState;
@@ -26,17 +26,29 @@ const kindColors = {
 };
 
 const zonePositions = {
-  idle: [-0.35, 0, 1.15],
-  counter: [0.2, 0, 0.45],
-  sgk: [3.15, 0, -1.25],
-  stock: [-3.35, 0, -1.25],
-  dermo: [-2.75, 0, -2.18]
+  idle: [-0.55, 0, 1.34],
+  counter: [0.1, 0, 0.68],
+  sgk: [3.65, 0, -1.25],
+  stock: [-4.05, 0, -1.42],
+  dermo: [-3.36, 0, -2.34]
 } satisfies Record<string, Vec3>;
 
 const phaseLighting: Record<DayPhase, { sky: string; ambient: number; key: number }> = {
   morning: { sky: "#f6efe2", ambient: 0.66, key: 2.2 },
   open: { sky: "#edf6fb", ambient: 0.72, key: 2.65 },
   closing: { sky: "#f7e7d7", ambient: 0.58, key: 1.75 }
+};
+
+const skinTones = ["#e7b68b", "#d59b70", "#f0c49c", "#bc7f5c"];
+const hairColors = ["#2a211e", "#4a3328", "#6b4b36", "#20242b"];
+const customerColors = ["#2f7a83", "#315f93", "#6f5b94", "#b87520", "#5e765f", "#8d4b55"];
+const staffUniformColors: Record<StaffRole, string> = {
+  pharmacist: "#b11e2b",
+  technician: "#287a83",
+  sgk: "#315f93",
+  dermo: "#8a6a46",
+  cashier: "#6f5b94",
+  stock: "#5e765f"
 };
 
 function taskZone(taskId?: string) {
@@ -49,7 +61,7 @@ function taskZone(taskId?: string) {
 }
 
 function taskLabel(taskId?: string) {
-  if (!taskId) return "Beklemede";
+  if (!taskId) return "Hazır";
   return staffTasks.find((task) => task.id === taskId)?.title ?? "Görevde";
 }
 
@@ -102,16 +114,16 @@ function ProductBox({ color, label, position }: { color: string; label: string; 
   return (
     <group position={position}>
       <mesh castShadow>
-        <boxGeometry args={[0.19, 0.26, 0.1]} />
+        <boxGeometry args={[0.22, 0.3, 0.11]} />
         <meshStandardMaterial color={color} roughness={0.62} />
       </mesh>
       <Text
         anchorX="center"
         anchorY="middle"
         color={labelColor}
-        fontSize={0.033}
-        maxWidth={0.16}
-        position={[0, 0.005, 0.053]}
+        fontSize={0.036}
+        maxWidth={0.18}
+        position={[0, 0.006, 0.06]}
       >
         {label}
       </Text>
@@ -131,9 +143,9 @@ function ShelfUnit({
   const products = getShelfProducts(item.id);
   const fillRatio = Math.max(0.04, Math.min(1, item.stock / item.capacity));
   const boxCount = Math.max(1, Math.round(fillRatio * 12));
-  const x = -3.9 + (index % 4) * 1.38;
-  const y = 0.66 + Math.floor(index / 4) * 1.06;
-  const z = -2.65;
+  const x = -4.28 + (index % 4) * 1.58;
+  const y = 0.78 + Math.floor(index / 4) * 1.18;
+  const z = -3.0;
   const handleClick = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
     onSelectModule(item.kind === "prescription" ? "sgk" : "stok");
@@ -141,12 +153,12 @@ function ShelfUnit({
 
   return (
     <group onClick={handleClick} position={[x, y, z]}>
-      <mesh castShadow receiveShadow scale={[1.08, 0.9, 0.24]}>
+      <mesh castShadow receiveShadow scale={[1.28, 1.04, 0.3]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#879188" roughness={0.8} />
       </mesh>
       {[0, 1, 2].map((row) => (
-        <mesh key={row} position={[0, -0.3 + row * 0.3, 0.17]} scale={[1.16, 0.025, 0.12]}>
+        <mesh key={row} position={[0, -0.34 + row * 0.34, 0.21]} scale={[1.38, 0.025, 0.14]}>
           <boxGeometry args={[1, 1, 1]} />
           <meshStandardMaterial color="#f7f8f2" roughness={0.7} />
         </mesh>
@@ -162,22 +174,159 @@ function ShelfUnit({
             color={color}
             key={`${item.id}-${productIndex}`}
             label={label}
-            position={[-0.39 + col * 0.26, -0.28 + row * 0.3, 0.32]}
+            position={[-0.48 + col * 0.32, -0.31 + row * 0.34, 0.38]}
           />
         );
       })}
-      <Text anchorX="center" anchorY="middle" color="#213028" fontSize={0.075} maxWidth={1} position={[0, 0.55, 0.33]}>
+      <Text anchorX="center" anchorY="middle" color="#213028" fontSize={0.085} maxWidth={1.12} position={[0, 0.64, 0.39]}>
         {item.name}
       </Text>
     </group>
   );
 }
 
-function StaffAvatar({ index, name, role, taskId }: { index: number; name: string; role: string; taskId?: string }) {
+function AvatarLimb({
+  color,
+  position,
+  rotation = [0, 0, 0],
+  scale
+}: {
+  color: string;
+  position: Vec3;
+  rotation?: Vec3;
+  scale: Vec3;
+}) {
+  return (
+    <mesh castShadow position={position} rotation={rotation} scale={scale}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial color={color} roughness={0.62} />
+    </mesh>
+  );
+}
+
+function HumanoidAvatar({
+  accentColor,
+  bodyColor,
+  hairColor,
+  impatient,
+  initial,
+  jacket,
+  label,
+  labelOffset,
+  roleBadge,
+  skinTone
+}: {
+  accentColor?: string;
+  bodyColor: string;
+  hairColor: string;
+  impatient?: boolean;
+  initial?: string;
+  jacket?: boolean;
+  label?: string;
+  labelOffset?: Vec3;
+  roleBadge?: string;
+  skinTone: string;
+}) {
+  const shoeColor = "#263028";
+  const legColor = jacket ? "#233047" : "#27343f";
+
+  return (
+    <group>
+      <mesh receiveShadow position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.26, 0.16, 0.01]}>
+        <cylinderGeometry args={[1, 1, 1, 28]} />
+        <meshStandardMaterial color="#1a241f" transparent opacity={0.22} roughness={1} />
+      </mesh>
+
+      <AvatarLimb color={legColor} position={[-0.065, 0.18, 0]} scale={[0.07, 0.28, 0.075]} />
+      <AvatarLimb color={legColor} position={[0.065, 0.18, 0]} scale={[0.07, 0.28, 0.075]} />
+      <AvatarLimb color={shoeColor} position={[-0.065, 0.035, 0.035]} scale={[0.09, 0.04, 0.13]} />
+      <AvatarLimb color={shoeColor} position={[0.065, 0.035, 0.035]} scale={[0.09, 0.04, 0.13]} />
+
+      <mesh castShadow position={[0, 0.48, 0]} scale={[0.28, 0.42, 0.16]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.58} />
+      </mesh>
+
+      {jacket && (
+        <>
+          <AvatarLimb color="#f6f8f4" position={[-0.075, 0.49, 0.086]} scale={[0.115, 0.4, 0.025]} />
+          <AvatarLimb color="#f6f8f4" position={[0.075, 0.49, 0.086]} scale={[0.115, 0.4, 0.025]} />
+          <AvatarLimb color={accentColor ?? "#b11e2b"} position={[0, 0.5, 0.104]} scale={[0.025, 0.36, 0.02]} />
+        </>
+      )}
+
+      <AvatarLimb color={bodyColor} position={[-0.215, 0.49, 0.02]} rotation={[0, 0, -0.18]} scale={[0.07, 0.34, 0.07]} />
+      <AvatarLimb color={bodyColor} position={[0.215, 0.49, 0.02]} rotation={[0, 0, 0.18]} scale={[0.07, 0.34, 0.07]} />
+      <mesh castShadow position={[-0.235, 0.29, 0.025]}>
+        <sphereGeometry args={[0.045, 12, 12]} />
+        <meshStandardMaterial color={skinTone} roughness={0.58} />
+      </mesh>
+      <mesh castShadow position={[0.235, 0.29, 0.025]}>
+        <sphereGeometry args={[0.045, 12, 12]} />
+        <meshStandardMaterial color={skinTone} roughness={0.58} />
+      </mesh>
+
+      <mesh castShadow position={[0, 0.78, 0]}>
+        <sphereGeometry args={[0.15, 20, 20]} />
+        <meshStandardMaterial color={skinTone} roughness={0.55} />
+      </mesh>
+      <mesh castShadow position={[0, 0.87, -0.012]} scale={[1.05, 0.46, 0.96]}>
+        <sphereGeometry args={[0.15, 18, 18]} />
+        <meshStandardMaterial color={hairColor} roughness={0.72} />
+      </mesh>
+
+      {initial && (
+        <Text anchorX="center" anchorY="middle" color={jacket ? "#1f2f26" : "#ffffff"} fontSize={0.095} position={[0, 0.51, 0.176]}>
+          {initial}
+        </Text>
+      )}
+
+      {!jacket && (
+        <mesh castShadow position={[0.2, 0.42, -0.055]} rotation={[0, 0.18, 0]} scale={[0.12, 0.18, 0.05]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color={accentColor ?? "#ede3c7"} roughness={0.64} />
+        </mesh>
+      )}
+
+      {impatient && (
+        <Text anchorX="center" anchorY="middle" color="#b21f2d" fontSize={0.13} position={[0.19, 1.02, 0]}>
+          !
+        </Text>
+      )}
+
+      {roleBadge && (
+        <Text anchorX="center" anchorY="middle" color="#ffffff" fontSize={0.052} maxWidth={0.34} position={[0, 0.26, 0.115]}>
+          {roleBadge}
+        </Text>
+      )}
+
+      {label && (
+        <Html center distanceFactor={8.4} position={labelOffset ?? [0, 1.12, 0]}>
+          <span className="world-person-label">{label}</span>
+        </Html>
+      )}
+    </group>
+  );
+}
+
+function StaffAvatar({
+  index,
+  name,
+  role,
+  roleLabel,
+  taskId
+}: {
+  index: number;
+  name: string;
+  role: StaffRole;
+  roleLabel: string;
+  taskId?: string;
+}) {
   const ref = useRef<Group>(null);
   const zone = taskZone(taskId);
   const base = zonePositions[zone];
-  const spread: Vec3 = [base[0] + index * 0.2, base[1], base[2] + (index % 2) * 0.24];
+  const spread: Vec3 = [base[0] + index * 0.24, base[1], base[2] + (index % 2) * 0.25];
+  const bodyColor = staffUniformColors[role] ?? "#b11e2b";
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
@@ -187,30 +336,25 @@ function StaffAvatar({ index, name, role, taskId }: { index: number; name: strin
 
   return (
     <group ref={ref} position={spread}>
-      <mesh castShadow position={[0, 0.34, 0]}>
-        <cylinderGeometry args={[0.13, 0.16, 0.48, 12]} />
-        <meshStandardMaterial color={zone === "sgk" ? "#315f93" : zone === "stock" ? "#5e765f" : "#b11e2b"} roughness={0.62} />
-      </mesh>
-      <mesh castShadow position={[0, 0.66, 0]}>
-        <sphereGeometry args={[0.14, 18, 18]} />
-        <meshStandardMaterial color="#e7b68b" roughness={0.55} />
-      </mesh>
-      <Text anchorX="center" anchorY="middle" color="#ffffff" fontSize={0.11} position={[0, 0.35, 0.145]}>
-        {name.slice(0, 1)}
-      </Text>
-      <Html center distanceFactor={9} position={[0, 0.95, 0]}>
-        <span className="world-person-label">
-          {role} · {taskLabel(taskId)}
-        </span>
-      </Html>
+      <HumanoidAvatar
+        accentColor={bodyColor}
+        bodyColor={bodyColor}
+        hairColor={hairColors[index % hairColors.length]}
+        initial={name.slice(0, 1)}
+        jacket
+        label={`${roleLabel} · ${taskLabel(taskId)}`}
+        labelOffset={[0, 1.12 + (index % 2) * 0.16, 0]}
+        roleBadge={zone === "sgk" ? "SGK" : zone === "stock" ? "STOK" : "BANKO"}
+        skinTone={skinTones[index % skinTones.length]}
+      />
     </group>
   );
 }
 
 function CustomerAvatar({ index, impatient }: { index: number; impatient: boolean }) {
   const ref = useRef<Group>(null);
-  const x = -1.35 + index * 0.3;
-  const z = 2.35 + index * 0.11;
+  const x = -1.8 + index * 0.36;
+  const z = 2.28 + (index % 2) * 0.18 + Math.floor(index / 2) * 0.1;
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
@@ -220,14 +364,13 @@ function CustomerAvatar({ index, impatient }: { index: number; impatient: boolea
 
   return (
     <group ref={ref} position={[x, 0, z]}>
-      <mesh castShadow position={[0, 0.31, 0]}>
-        <cylinderGeometry args={[0.12, 0.15, 0.44, 12]} />
-        <meshStandardMaterial color={impatient ? "#c55336" : "#2f7a83"} roughness={0.7} />
-      </mesh>
-      <mesh castShadow position={[0, 0.61, 0]}>
-        <sphereGeometry args={[0.13, 16, 16]} />
-        <meshStandardMaterial color="#e4b58c" roughness={0.58} />
-      </mesh>
+      <HumanoidAvatar
+        accentColor="#ede3c7"
+        bodyColor={impatient ? "#c55336" : customerColors[index % customerColors.length]}
+        hairColor={hairColors[(index + 2) % hairColors.length]}
+        impatient={impatient}
+        skinTone={skinTones[(index + 1) % skinTones.length]}
+      />
     </group>
   );
 }
@@ -252,8 +395,8 @@ function DeliveryScooter({ activeModule, onSelectModule }: { activeModule: Modul
   };
 
   return (
-    <group onClick={handleClick} position={[-4.4, 0, 2.82]} rotation={[0, 0.18, 0]}>
-      <mesh castShadow position={[0, 0.25, 0]} scale={[0.64, 0.28, 0.28]}>
+    <group onClick={handleClick} position={[-5.05, 0, 3.14]} rotation={[0, 0.18, 0]}>
+      <mesh castShadow position={[0, 0.25, 0]} scale={[0.58, 0.24, 0.24]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={activeModule === "depo" ? "#b21f2d" : "#ded7c7"} roughness={0.58} />
       </mesh>
@@ -281,49 +424,56 @@ function StoreShell({
   onSelectModule: (module: ModuleId) => void;
   state: GameState;
 }) {
+  const facadeName = (state.pharmacyName || "Kırmızı Tabela").replace(/\s+Eczanesi$/i, "");
+  const signText = facadeName.length > 22 ? "ECZANE" : facadeName;
+
   return (
     <group>
       <mesh receiveShadow position={[0, -0.02, 0]}>
-        <boxGeometry args={[9.4, 0.04, 6.9]} />
+        <boxGeometry args={[10.9, 0.04, 7.7]} />
         <meshStandardMaterial color="#e4e6dc" roughness={0.84} />
       </mesh>
-      <mesh receiveShadow position={[0, 1.25, -3.18]}>
-        <boxGeometry args={[9.4, 2.5, 0.16]} />
+      <mesh receiveShadow position={[0, 1.42, -3.64]}>
+        <boxGeometry args={[10.9, 2.84, 0.16]} />
         <meshStandardMaterial color="#f8f7ef" roughness={0.72} />
       </mesh>
-      <mesh receiveShadow position={[-4.66, 1, 0]}>
-        <boxGeometry args={[0.16, 2, 6.9]} />
+      <mesh receiveShadow position={[-5.38, 1.16, 0]}>
+        <boxGeometry args={[0.16, 2.32, 7.7]} />
         <meshStandardMaterial color="#ece6dd" roughness={0.78} />
       </mesh>
-      <mesh position={[0, 2.55, -3.02]} scale={[3.2, 0.42, 0.12]}>
+      <mesh receiveShadow position={[5.38, 1.16, -1.02]}>
+        <boxGeometry args={[0.16, 2.32, 5.25]} />
+        <meshStandardMaterial color="#eef2ec" roughness={0.78} />
+      </mesh>
+      <mesh position={[0, 2.48, -3.48]} scale={[3.05, 0.38, 0.12]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#e51823" emissive="#a0121b" emissiveIntensity={0.28} roughness={0.46} />
       </mesh>
-      <Text anchorX="center" anchorY="middle" color="#ffffff" fontSize={0.34} position={[0, 2.56, -2.93]}>
-        {state.pharmacyName || "KIRMIZI TABELA"}
+      <Text anchorX="center" anchorY="middle" color="#ffffff" fontSize={0.23} maxWidth={2.78} position={[0, 2.49, -3.39]}>
+        {signText}
       </Text>
-      <mesh position={[4.44, 1.35, -1.4]} rotation={[0, -Math.PI / 2, 0]}>
+      <mesh position={[5.06, 1.55, -1.62]} rotation={[0, -Math.PI / 2, 0]}>
         <boxGeometry args={[1, 0.9, 0.12]} />
         <meshStandardMaterial color="#e51823" emissive="#e51823" emissiveIntensity={0.38} roughness={0.4} />
       </mesh>
-      <Text anchorX="center" anchorY="middle" color="#ffffff" fontSize={0.62} position={[4.35, 1.35, -1.4]} rotation={[0, -Math.PI / 2, 0]}>
+      <Text anchorX="center" anchorY="middle" color="#ffffff" fontSize={0.62} position={[4.97, 1.55, -1.62]} rotation={[0, -Math.PI / 2, 0]}>
         E
       </Text>
       {state.inventory.map((item, index) => (
         <ShelfUnit item={item} index={index} key={item.id} onSelectModule={onSelectModule} />
       ))}
-      <SelectableBox active={activeModule === "eczane"} color="#cfd6ce" module="eczane" onSelectModule={onSelectModule} position={[0, 0.42, 0.05]} scale={[2.55, 0.72, 0.75]} />
-      <Text anchorX="center" anchorY="middle" color="#27322a" fontSize={0.16} position={[0, 0.86, 0.46]}>
+      <SelectableBox active={activeModule === "eczane"} color="#cfd6ce" module="eczane" onSelectModule={onSelectModule} position={[0.12, 0.48, 0.16]} scale={[3.22, 0.86, 0.94]} />
+      <Text anchorX="center" anchorY="middle" color="#27322a" fontSize={0.18} position={[0.12, 0.99, 0.65]}>
         BANKO
       </Text>
-      <SelectableBox active={activeModule === "sgk"} color="#e4eef7" module="sgk" onSelectModule={onSelectModule} position={[3.25, 0.42, -1.32]} scale={[1.15, 0.72, 0.72]} />
-      <SelectableBox active={activeModule === "finans"} color="#ede3c7" module="finans" onSelectModule={onSelectModule} position={[1.65, 0.55, 0.68]} scale={[0.52, 0.32, 0.38]} />
-      <SelectableBox active={activeModule === "pazar"} color="#dde9e2" module="pazar" onSelectModule={onSelectModule} position={[3.35, 0.34, 1.35]} scale={[1.12, 0.58, 0.62]} />
-      <SelectableBox active={activeModule === "personel"} color="#f1d8d7" module="personel" onSelectModule={onSelectModule} position={[-1.9, 0.08, 0.72]} scale={[1.3, 0.05, 0.7]} />
-      <ZoneLabel label="Raflar" position={[-2.05, 2.12, -2.32]} />
-      <ZoneLabel label="Banko" position={[0, 1.25, 0.62]} />
-      <ZoneLabel label="SGK" position={[3.25, 1.1, -1.05]} />
-      <ZoneLabel label="Finans" position={[1.65, 1.03, 0.88]} />
+      <SelectableBox active={activeModule === "sgk"} color="#e4eef7" module="sgk" onSelectModule={onSelectModule} position={[3.68, 0.48, -1.2]} scale={[1.34, 0.86, 0.88]} />
+      <SelectableBox active={activeModule === "finans"} color="#ede3c7" module="finans" onSelectModule={onSelectModule} position={[1.95, 0.55, 0.88]} scale={[0.62, 0.34, 0.44]} />
+      <SelectableBox active={activeModule === "pazar"} color="#dde9e2" module="pazar" onSelectModule={onSelectModule} position={[3.72, 0.36, 1.58]} scale={[1.22, 0.62, 0.68]} />
+      <SelectableBox active={activeModule === "personel"} color="#f1d8d7" module="personel" onSelectModule={onSelectModule} position={[-2.25, 0.08, 0.9]} scale={[1.5, 0.05, 0.78]} />
+      <ZoneLabel label="Raflar" position={[-2.22, 2.38, -2.72]} />
+      <ZoneLabel label="Banko" position={[0.12, 1.42, 0.8]} />
+      <ZoneLabel label="SGK" position={[3.68, 1.24, -0.95]} />
+      <ZoneLabel label="Finans" position={[1.95, 1.05, 1.12]} />
       <DeliveryScooter activeModule={activeModule} onSelectModule={onSelectModule} />
     </group>
   );
@@ -356,18 +506,19 @@ function PharmacyScene({
           index={index}
           key={person.id}
           name={person.name}
-          role={roleLabels[person.role]}
+          role={person.role}
+          roleLabel={roleLabels[person.role]}
           taskId={person.assignedTaskId}
         />
       ))}
       <OrbitControls
         enableDamping
         enablePan={false}
-        maxDistance={11}
+        maxDistance={8.8}
         maxPolarAngle={Math.PI / 2.45}
-        minDistance={7.2}
-        minPolarAngle={Math.PI / 4.7}
-        target={[0, 0.65, -0.35]}
+        minDistance={5.2}
+        minPolarAngle={Math.PI / 5}
+        target={[-0.22, 0.88, -0.62]}
       />
     </>
   );
@@ -380,7 +531,7 @@ export function PharmacyWorld3D({ activeModule, onSelectModule, setupLocked, sta
 
   return (
     <section className="pharmacy-world">
-      <Canvas camera={{ fov: 42, position: [6.8, 5.7, 7.4] }} dpr={[1, 1.7]} shadows>
+      <Canvas camera={{ fov: 37, position: [5.5, 4.7, 6.05] }} dpr={[1, 1.7]} shadows>
         <Suspense fallback={null}>
           <PharmacyScene activeModule={activeModule} onSelectModule={onSelectModule} setupLocked={setupLocked} state={state} />
         </Suspense>
