@@ -141,8 +141,8 @@ function HotspotMarker({ active, hotspot, onTravel }: { active: boolean; hotspot
         <cylinderGeometry args={[hotspot.radius * 0.38, hotspot.radius * 0.38, 0.035, 32]} />
         <meshStandardMaterial color={active ? "#b21f2d" : "#f6f3e8"} emissive={active ? "#82131d" : "#000000"} emissiveIntensity={active ? 0.25 : 0} />
       </mesh>
-      <Html center distanceFactor={5.7} position={[0, 0.42, 0]}>
-        <button className={`reboot-world-label ${active ? "active" : ""}`} onClick={(event) => {
+      <Html center distanceFactor={active ? 5.8 : 8.8} position={[0, active ? 0.52 : 0.34, 0]}>
+        <button className={`reboot-world-label ${active ? "active" : "quiet"}`} onClick={(event) => {
           event.stopPropagation();
           onTravel(hotspot);
         }}>
@@ -249,16 +249,16 @@ function PlayerController({
       onTargetChange(nextTarget);
     }
 
-    const cameraOffset = scene === "street" ? new Vector3(0.45, 2.35, 4.55) : new Vector3(0.55, 2.0, 4.0);
+    const cameraOffset = scene === "street" ? new Vector3(0.18, 1.55, 2.85) : new Vector3(0.12, 1.38, 2.48);
     const desired = new Vector3(playerPosition.x, 0, playerPosition.z).add(cameraOffset);
-    camera.position.lerp(desired, 0.08);
-    camera.lookAt(playerPosition.x, 0.72, playerPosition.z);
+    camera.position.lerp(desired, 0.1);
+    camera.lookAt(playerPosition.x, scene === "street" ? 0.92 : 0.82, playerPosition.z);
   });
 
   return (
     <group ref={ref}>
       <AvatarModel outfit={outfit} />
-      <Html center distanceFactor={7.6} position={[0, 1.34, 0]}>
+      <Html center distanceFactor={9.2} position={[0, 1.74, 0]}>
         <span className="reboot-player-label">Eczacı</span>
       </Html>
     </group>
@@ -284,6 +284,7 @@ function StreetScene({
   return (
     <>
       <color attach="background" args={["#8bdcd2"]} />
+      <fog attach="fog" args={["#8bdcd2", 5.8, 13.5]} />
       <ambientLight intensity={0.78} />
       <directionalLight castShadow intensity={2.55} position={[4, 7, 5]} shadow-mapSize={[1536, 1536]} />
       <StreetDiorama />
@@ -323,6 +324,7 @@ function PharmacyScene({
   return (
     <>
       <color attach="background" args={["#dce5dc"]} />
+      <fog attach="fog" args={["#dce5dc", 4.8, 9.8]} />
       <ambientLight intensity={0.82} />
       <directionalLight castShadow intensity={2.25} position={[3, 5, 4]} />
       <mesh receiveShadow position={[0, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[7.4, 5.6, 1]}>
@@ -462,7 +464,7 @@ function PharmacyStaffCrew() {
       {crew.map((person) => (
         <group key={person.label} position={person.position} rotation={person.rotation ?? [0, 0, 0]} scale={[0.72, 0.72, 0.72]}>
           <StaffModel index={person.index} />
-          <Html center distanceFactor={7.2} position={[0, 1.28, 0]}>
+          <Html center distanceFactor={8.4} position={[0, 1.84, 0]}>
             <span className="reboot-world-label subtle">{person.label}</span>
           </Html>
         </group>
@@ -695,7 +697,7 @@ export function RebootGame() {
 
   return (
     <main className="reboot-game">
-      <Canvas camera={{ fov: 54, position: [0, 2.4, 6] }} dpr={[1, 1.7]} shadows>
+      <Canvas camera={{ fov: 58, position: [0, 1.6, 3.1] }} dpr={[1, 1.7]} shadows>
         <Suspense fallback={null}>
           <RebootScene activeTarget={activeTarget} onTargetChange={setActiveTarget} onTravel={travelToHotspot} onTravelComplete={completeTravel} state={game} travelIntent={travelIntent} />
         </Suspense>

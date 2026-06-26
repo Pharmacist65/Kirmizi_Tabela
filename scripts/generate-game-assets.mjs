@@ -122,65 +122,65 @@ function makeHuman({
 }) {
   const g = group(name);
   g.scale.set(height, height, height);
-  roundedShadow(g, gender === "male" ? 0.38 : 0.34, 0.25);
+  roundedShadow(g, gender === "male" ? 0.32 : 0.3, 0.22);
 
   for (const x of [-0.095, 0.095]) {
-    cylinder(g, `leg_${x}`, pants, [x, 0.22, 0], 0.052, 0.067, 0.42, 14);
+    cylinder(g, `leg_${x}`, pants, [x, 0.34, 0], 0.046, 0.058, 0.62, 14);
     box(g, `shoe_${x}`, shoes, [x, 0.035, 0.07], [0.115, 0.04, 0.17]);
   }
 
   if (skirt) {
-    cylinder(g, "skirt", pants, [0, 0.39, 0], 0.2, 0.27, 0.3, 10);
+    cylinder(g, "skirt", pants, [0, 0.62, 0], 0.16, 0.22, 0.38, 10);
   }
 
-  cylinder(g, "torso", top, [0, 0.58, 0], gender === "male" ? 0.2 : 0.18, gender === "male" ? 0.27 : 0.245, 0.5, 10);
-  box(g, "front_trim", accent, [0, 0.59, 0.155], [0.055, 0.39, 0.018]);
-  box(g, "left_pocket", accent, [-0.09, 0.46, 0.165], [0.055, 0.045, 0.014]);
-  box(g, "right_pocket", accent, [0.09, 0.46, 0.165], [0.055, 0.045, 0.014]);
-  cylinder(g, "neck", skin, [0, 0.83, 0], 0.07, 0.075, 0.085, 12);
+  cylinder(g, "torso", top, [0, 0.86, 0], gender === "male" ? 0.18 : 0.165, gender === "male" ? 0.245 : 0.225, 0.62, 10);
+  box(g, "front_trim", accent, [0, 0.87, 0.145], [0.045, 0.49, 0.016]);
+  box(g, "left_pocket", accent, [-0.08, 0.68, 0.156], [0.05, 0.04, 0.012]);
+  box(g, "right_pocket", accent, [0.08, 0.68, 0.156], [0.05, 0.04, 0.012]);
+  cylinder(g, "neck", skin, [0, 1.22, 0], 0.055, 0.063, 0.11, 12);
 
   for (const x of [-0.255, 0.255]) {
-    const arm = cylinder(g, `arm_${x}`, top, [x, 0.49, 0.01], 0.043, 0.052, 0.42, 10);
+    const arm = cylinder(g, `arm_${x}`, top, [x, 0.82, 0.01], 0.035, 0.045, 0.56, 10);
     arm.rotation.z = x > 0 ? -0.28 : 0.28;
-    sphere(g, `hand_${x}`, skin, [x, 0.27, 0.03], 0.052);
+    sphere(g, `hand_${x}`, skin, [x, 0.51, 0.03], 0.044);
   }
 
-  sphere(g, "head", skin, [0, 0.99, 0], 0.155);
-  sphere(g, "nose", "#ca8b69", [0.025, 0.975, 0.145], 1, [0.045, 0.024, 0.025]);
-  for (const x of [-0.055, 0.055]) sphere(g, `eye_${x}`, "#1b1d21", [x, 1.01, 0.145], 1, [0.018, 0.022, 0.012]);
+  sphere(g, "head", skin, [0, 1.4, 0], 0.13, [0.92, 1.08, 0.92]);
+  sphere(g, "nose", "#ca8b69", [0.02, 1.39, 0.12], 1, [0.035, 0.018, 0.022]);
+  for (const x of [-0.045, 0.045]) sphere(g, `eye_${x}`, "#1b1d21", [x, 1.42, 0.12], 1, [0.015, 0.018, 0.01]);
 
   if (mask) {
-    box(g, "medical_mask", "#eef3ee", [0, 0.95, 0.153], [0.18, 0.075, 0.017]);
-    box(g, "mask_top_line", "#cdd8d4", [0, 0.985, 0.164], [0.19, 0.008, 0.012]);
-    for (const x of [-0.105, 0.105]) box(g, `mask_strap_${x}`, "#d7e0dc", [x, 0.95, 0.147], [0.018, 0.065, 0.012]);
+    box(g, "medical_mask", "#eef3ee", [0, 1.365, 0.126], [0.152, 0.065, 0.015]);
+    box(g, "mask_top_line", "#cdd8d4", [0, 1.395, 0.136], [0.16, 0.007, 0.01]);
+    for (const x of [-0.087, 0.087]) box(g, `mask_strap_${x}`, "#d7e0dc", [x, 1.365, 0.119], [0.014, 0.055, 0.01]);
   } else {
-    box(g, "mouth", "#9a584d", [0, 0.94, 0.151], [0.052, 0.008, 0.01]);
+    box(g, "mouth", "#9a584d", [0, 1.355, 0.126], [0.045, 0.007, 0.009]);
   }
 
   if (hairStyle === "covered") {
-    sphere(g, "covered_hair", "#f0eadf", [0, 1.075, -0.02], 0.152, [1.04, 0.5, 1.02]);
-    box(g, "scarf_tail", "#c8d0c7", [0, 0.81, -0.115], [0.22, 0.16, 0.055]);
+    sphere(g, "covered_hair", "#f0eadf", [0, 1.49, -0.02], 0.128, [1.02, 0.52, 1.02]);
+    box(g, "scarf_tail", "#c8d0c7", [0, 1.22, -0.1], [0.18, 0.15, 0.05]);
   } else {
-    sphere(g, "hair_cap", hair, [0, 1.08, -0.02], 0.15, [1.08, hairStyle === "bob" ? 0.62 : 0.5, 0.96]);
+    sphere(g, "hair_cap", hair, [0, 1.49, -0.02], 0.128, [1.08, hairStyle === "bob" ? 0.64 : 0.5, 0.98]);
     if (hairStyle === "bob" || hairStyle === "long") {
-      for (const x of [-0.13, 0.13]) box(g, `side_hair_${x}`, hair, [x, 0.89, 0.0], [0.06, hairStyle === "long" ? 0.28 : 0.2, 0.065]);
+      for (const x of [-0.105, 0.105]) box(g, `side_hair_${x}`, hair, [x, 1.33, 0.0], [0.05, hairStyle === "long" ? 0.25 : 0.18, 0.055]);
     }
-    if (hairStyle === "long") box(g, "back_hair", hair, [0, 0.86, -0.12], [0.18, 0.26, 0.055]);
+    if (hairStyle === "long") box(g, "back_hair", hair, [0, 1.3, -0.105], [0.16, 0.24, 0.05]);
   }
 
   if (bag) {
-    box(g, "shoulder_bag", "#4b5e54", [0.24, 0.58, -0.12], [0.12, 0.34, 0.08]);
-    box(g, "bag_strap", "#2f3b36", [0.08, 0.66, 0.13], [0.035, 0.54, 0.018], { rotation: [0, 0, -0.4] });
+    box(g, "shoulder_bag", "#4b5e54", [0.23, 0.84, -0.12], [0.11, 0.3, 0.07]);
+    box(g, "bag_strap", "#2f3b36", [0.08, 0.93, 0.12], [0.03, 0.48, 0.016], { rotation: [0, 0, -0.4] });
   }
 
   if (badge) {
-    box(g, "name_badge", "#f8f7ef", [0.105, 0.69, 0.174], [0.075, 0.036, 0.014]);
-    box(g, "badge_line", "#b21f2d", [0.105, 0.69, 0.184], [0.045, 0.006, 0.01]);
+    box(g, "name_badge", "#f8f7ef", [0.095, 0.97, 0.164], [0.07, 0.032, 0.012]);
+    box(g, "badge_line", "#b21f2d", [0.095, 0.97, 0.174], [0.042, 0.006, 0.009]);
   }
 
   if (clipboard) {
-    box(g, "clipboard", "#f3eee0", [-0.29, 0.45, 0.1], [0.11, 0.18, 0.025], { rotation: [0.08, -0.12, -0.18] });
-    box(g, "clipboard_clip", "#6e7771", [-0.29, 0.53, 0.12], [0.07, 0.025, 0.018], { rotation: [0.08, -0.12, -0.18] });
+    box(g, "clipboard", "#f3eee0", [-0.27, 0.72, 0.1], [0.105, 0.17, 0.024], { rotation: [0.08, -0.12, -0.18] });
+    box(g, "clipboard_clip", "#6e7771", [-0.27, 0.795, 0.12], [0.066, 0.024, 0.017], { rotation: [0.08, -0.12, -0.18] });
   }
 
   return g;
@@ -188,13 +188,13 @@ function makeHuman({
 
 function makeStreetBase() {
   const g = group("street_base");
-  sphere(g, "small_planet_ground", "#87a982", [0, -1.02, 0.18], 1, [8.8, 1.05, 5.05]);
-  box(g, "asphalt", "#48534f", [0, -0.03, 1.28], [11.8, 0.08, 1.05]);
-  box(g, "sidewalk", "#ddd9c9", [0, -0.005, -0.34], [11.6, 0.07, 2.35]);
-  box(g, "curb", "#efe9da", [0, 0.035, 0.62], [11.8, 0.08, 0.08]);
-  for (const x of [-3.8, -2.25, -0.7, 0.85, 2.4, 3.95]) box(g, `lane_${x}`, "#dfe4dc", [x, 0.025, 1.26], [0.52, 0.025, 0.035]);
-  for (const x of [-0.72, -0.42, -0.12, 0.18, 0.48, 0.78]) box(g, `crosswalk_${x}`, "#f8f5e9", [x, 0.045, 1.75], [0.18, 0.028, 0.72]);
-  for (const x of [-5.65, 5.65]) box(g, `edge_${x}`, "#66776c", [x, 0.1, 0.28], [0.12, 0.22, 3.05]);
+  sphere(g, "small_planet_ground", "#87a982", [0, -1.58, 0.18], 1, [8.8, 1.64, 5.05]);
+  box(g, "asphalt", "#48534f", [0, 0.02, 1.28], [11.8, 0.08, 1.05]);
+  box(g, "sidewalk", "#ddd9c9", [0, 0.045, -0.34], [11.6, 0.07, 2.35]);
+  box(g, "curb", "#efe9da", [0, 0.085, 0.62], [11.8, 0.08, 0.08]);
+  for (const x of [-3.8, -2.25, -0.7, 0.85, 2.4, 3.95]) box(g, `lane_${x}`, "#dfe4dc", [x, 0.075, 1.26], [0.52, 0.025, 0.035]);
+  for (const x of [-0.72, -0.42, -0.12, 0.18, 0.48, 0.78]) box(g, `crosswalk_${x}`, "#f8f5e9", [x, 0.095, 1.75], [0.18, 0.028, 0.72]);
+  for (const x of [-5.65, 5.65]) box(g, `edge_${x}`, "#66776c", [x, 0.15, 0.28], [0.12, 0.22, 3.05]);
   return g;
 }
 
