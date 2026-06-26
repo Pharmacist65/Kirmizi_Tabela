@@ -105,10 +105,10 @@ const outfitCards: { id: OutfitId; label: string; coat: string; accent: string; 
 ];
 
 const streetHotspots: Hotspot[] = [
-  { id: "pharmacy-door", label: "Eczaneye gir", position: [0, 0, -1.05], radius: 1.25 },
-  { id: "depot", label: "Depodan koli al", position: [-4.65, 0, 0.25], radius: 1.45 },
-  { id: "sgk-building", label: "SGK binası", position: [4.45, 0, -0.15], radius: 1.35 },
-  { id: "bank", label: "Banka / POS", position: [2.7, 0, 2.18], radius: 1.18 }
+  { id: "pharmacy-door", label: "Eczaneye gir", position: [0, 0, -1.08], radius: 1.2 },
+  { id: "depot", label: "Depodan koli al", position: [-4.72, 0, 0.7], radius: 1.25 },
+  { id: "sgk-building", label: "SGK binası", position: [4.65, 0, -0.05], radius: 1.25 },
+  { id: "bank", label: "Banka / POS", position: [2.9, 0, 1.62], radius: 1.1 }
 ];
 
 const pharmacyHotspots: Hotspot[] = [
@@ -280,49 +280,71 @@ function AvatarModel({ outfit, scale = 1 }: { outfit: OutfitId; scale?: number }
   const selected = outfitCards.find((item) => item.id === outfit) ?? outfitCards[0];
   return (
     <group scale={[scale, scale, scale]}>
-      <mesh receiveShadow position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.32, 0.22, 0.01]}>
+      <mesh receiveShadow position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.36, 0.24, 0.012]}>
         <cylinderGeometry args={[1, 1, 1, 32]} />
-        <meshStandardMaterial color="#1b2420" transparent opacity={0.18} />
+        <meshStandardMaterial color="#14221d" transparent opacity={0.2} />
       </mesh>
-      <mesh castShadow position={[-0.08, 0.16, 0]} scale={[0.07, 0.28, 0.075]}>
+      {[-0.095, 0.095].map((x) => (
+        <group key={x}>
+          <mesh castShadow position={[x, 0.22, 0]} scale={[1, 1, 1]}>
+            <cylinderGeometry args={[0.052, 0.067, 0.42, 12]} />
+            <meshStandardMaterial color={selected.pants} roughness={0.58} />
+          </mesh>
+          <mesh castShadow position={[x, 0.035, 0.07]} scale={[0.115, 0.04, 0.17]}>
+            <boxGeometry />
+            <meshStandardMaterial color="#f3f1e8" roughness={0.48} />
+          </mesh>
+        </group>
+      ))}
+      <mesh castShadow position={[0, 0.56, 0]}>
+        <cylinderGeometry args={[0.18, 0.255, 0.48, 8]} />
+        <meshStandardMaterial color={selected.coat} roughness={0.54} />
+      </mesh>
+      <mesh castShadow position={[0, 0.57, 0.15]} scale={[0.055, 0.39, 0.018]}>
         <boxGeometry />
-        <meshStandardMaterial color={selected.pants} roughness={0.62} />
+        <meshStandardMaterial color={selected.accent} roughness={0.5} />
       </mesh>
-      <mesh castShadow position={[0.08, 0.16, 0]} scale={[0.07, 0.28, 0.075]}>
-        <boxGeometry />
-        <meshStandardMaterial color={selected.pants} roughness={0.62} />
+      <mesh castShadow position={[0, 0.82, 0]}>
+        <cylinderGeometry args={[0.07, 0.075, 0.08, 12]} />
+        <meshStandardMaterial color="#d9a982" roughness={0.48} />
       </mesh>
-      {[-0.08, 0.08].map((x) => (
-        <mesh castShadow key={x} position={[x, 0.035, 0.045]} scale={[0.095, 0.04, 0.13]}>
-          <boxGeometry />
-          <meshStandardMaterial color="#f2eee5" roughness={0.52} />
+      {[-0.255, 0.255].map((x) => (
+        <group key={x} rotation={[0, 0, x > 0 ? -0.28 : 0.28]} position={[x, 0.56, 0.01]}>
+          <mesh castShadow position={[0, -0.08, 0]} rotation={[0.1, 0, 0]} scale={[1, 1, 1]}>
+            <cylinderGeometry args={[0.043, 0.052, 0.42, 10]} />
+            <meshStandardMaterial color={selected.coat} roughness={0.6} />
+          </mesh>
+          <mesh castShadow position={[0, -0.31, 0.02]}>
+            <sphereGeometry args={[0.052, 12, 10]} />
+            <meshStandardMaterial color="#d9a982" roughness={0.48} />
+          </mesh>
+        </group>
+      ))}
+      <mesh castShadow position={[0, 0.98, 0]}>
+        <sphereGeometry args={[0.155, 24, 18]} />
+        <meshStandardMaterial color="#e4b58d" roughness={0.48} />
+      </mesh>
+      <mesh castShadow position={[0, 1.07, -0.02]} scale={[1.08, 0.58, 0.96]}>
+        <sphereGeometry args={[0.15, 18, 14]} />
+        <meshStandardMaterial color="#242331" roughness={0.7} />
+      </mesh>
+      <mesh castShadow position={[0.025, 0.97, 0.145]} scale={[0.045, 0.024, 0.025]}>
+        <sphereGeometry args={[1, 10, 8]} />
+        <meshStandardMaterial color="#ca8b69" roughness={0.5} />
+      </mesh>
+      {[-0.055, 0.055].map((x) => (
+        <mesh castShadow key={`eye-${x}`} position={[x, 1.005, 0.145]} scale={[0.018, 0.022, 0.012]}>
+          <sphereGeometry args={[1, 8, 6]} />
+          <meshStandardMaterial color="#1b1d21" roughness={0.42} />
         </mesh>
       ))}
-      <mesh castShadow position={[0, 0.48, 0]} scale={[0.28, 0.42, 0.16]}>
+      <mesh castShadow position={[0, 0.94, 0.151]} scale={[0.052, 0.008, 0.01]}>
         <boxGeometry />
-        <meshStandardMaterial color={selected.coat} roughness={0.58} />
+        <meshStandardMaterial color="#9a584d" roughness={0.52} />
       </mesh>
-      <mesh castShadow position={[0, 0.49, 0.092]} scale={[0.035, 0.36, 0.018]}>
+      <mesh castShadow position={[0.24, 0.58, -0.12]} rotation={[0, -0.14, 0]} scale={[0.12, 0.34, 0.08]}>
         <boxGeometry />
-        <meshStandardMaterial color={selected.accent} roughness={0.58} />
-      </mesh>
-      {[-0.22, 0.22].map((x) => (
-        <mesh castShadow key={x} position={[x, 0.49, 0.02]} rotation={[0, 0, x > 0 ? 0.18 : -0.18]} scale={[0.07, 0.34, 0.07]}>
-          <boxGeometry />
-          <meshStandardMaterial color={selected.coat} roughness={0.62} />
-        </mesh>
-      ))}
-      <mesh castShadow position={[0, 0.79, 0]}>
-        <sphereGeometry args={[0.15, 22, 22]} />
-        <meshStandardMaterial color="#e7b68b" roughness={0.52} />
-      </mesh>
-      <mesh castShadow position={[0, 0.89, -0.012]} scale={[1.12, 0.46, 1]}>
-        <sphereGeometry args={[0.15, 18, 18]} />
-        <meshStandardMaterial color="#26232d" roughness={0.72} />
-      </mesh>
-      <mesh castShadow position={[0.23, 0.5, -0.12]} rotation={[0, -0.16, 0]} scale={[0.1, 0.3, 0.07]}>
-        <boxGeometry />
-        <meshStandardMaterial color="#48594f" roughness={0.72} />
+        <meshStandardMaterial color="#4b5e54" roughness={0.7} />
       </mesh>
     </group>
   );
@@ -443,7 +465,7 @@ function PlayerController({
       onTargetChange(nextTarget);
     }
 
-    const cameraOffset = scene === "street" ? new Vector3(0.9, 2.35, 5.2) : new Vector3(0.55, 2.0, 4.0);
+    const cameraOffset = scene === "street" ? new Vector3(0.45, 2.35, 4.55) : new Vector3(0.55, 2.0, 4.0);
     const desired = new Vector3(playerPosition.x, 0, playerPosition.z).add(cameraOffset);
     camera.position.lerp(desired, 0.08);
     camera.lookAt(playerPosition.x, 0.72, playerPosition.z);
@@ -452,7 +474,7 @@ function PlayerController({
   return (
     <group ref={ref}>
       <AvatarModel outfit={outfit} />
-      <Html center distanceFactor={7.2} position={[0, 1.16, 0]}>
+      <Html center distanceFactor={7.6} position={[0, 1.34, 0]}>
         <span className="reboot-player-label">Eczacı</span>
       </Html>
     </group>
@@ -477,26 +499,15 @@ function StreetScene({
   const hotspots = useMemo(() => getHotspots("street"), []);
   return (
     <>
-      <color attach="background" args={["#7fd6cf"]} />
-      <ambientLight intensity={0.75} />
-      <directionalLight castShadow intensity={2.4} position={[4, 7, 5]} />
-      <mesh receiveShadow position={[0, -8.85, 0]} scale={[8.5, 8.5, 8.5]}>
-        <sphereGeometry args={[1, 96, 36]} />
-        <meshStandardMaterial color="#aebbac" roughness={0.78} />
-      </mesh>
-      <mesh receiveShadow position={[0, -0.035, 1.35]} rotation={[-Math.PI / 2, 0, 0]} scale={[12, 1.25, 1]}>
-        <boxGeometry />
-        <meshStandardMaterial color="#58625f" roughness={0.8} />
-      </mesh>
-      <mesh receiveShadow position={[0, -0.02, 0.08]} rotation={[-Math.PI / 2, 0, 0]} scale={[12, 1.65, 1]}>
-        <boxGeometry />
-        <meshStandardMaterial color="#e9e4d7" roughness={0.72} />
-      </mesh>
-
-      <Building label="KIRMIZI TABELA" color="#efe8dd" sign="#e51d2a" position={[0, 0, -1.65]} scale={[1.65, 2.2, 0.48]} />
-      <Building label="ECZA DEPOSU" color="#ead8bd" sign="#f7f2df" position={[-4.65, 0, -0.55]} scale={[1.28, 1.35, 0.62]} />
-      <Building label="SGK" color="#dce7ed" sign="#f7fbff" position={[4.45, 0, -0.75]} scale={[1.35, 1.55, 0.62]} />
-      <Building label="BANKA POS" color="#dedbd0" sign="#ffffff" position={[2.7, 0, 2.72]} scale={[1.05, 1.1, 0.5]} />
+      <color attach="background" args={["#8bdcd2"]} />
+      <ambientLight intensity={0.78} />
+      <directionalLight castShadow intensity={2.55} position={[4, 7, 5]} shadow-mapSize={[1536, 1536]} />
+      <StreetDiorama />
+      <PharmacyFacade />
+      <DepotWarehouse />
+      <SgkOffice />
+      <BankBranch />
+      <StreetDetails />
 
       {hotspots.map((hotspot) => (
         <HotspotMarker active={activeTarget === hotspot.id || travelIntent?.hotspotId === hotspot.id} hotspot={hotspot} key={hotspot.id} onTravel={onTravel} />
@@ -553,6 +564,296 @@ function PharmacyScene({
       <InteriorQueue count={state.queue} />
       <PlayerController hotspots={hotspots} initialPosition={[0, 0, 2.05]} onTargetChange={onTargetChange} onTravelComplete={onTravelComplete} outfit={state.outfit} scene="pharmacy" travelIntent={travelIntent} />
     </>
+  );
+}
+
+function StreetDiorama() {
+  return (
+    <group>
+      <mesh receiveShadow position={[0, -1.02, 0.18]} scale={[8.8, 1.05, 5.05]}>
+        <sphereGeometry args={[1, 96, 32]} />
+        <meshStandardMaterial color="#87a982" roughness={0.86} />
+      </mesh>
+      <mesh receiveShadow position={[0, -0.03, 1.28]} scale={[11.8, 0.08, 1.05]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#48534f" roughness={0.82} />
+      </mesh>
+      <mesh receiveShadow position={[0, -0.005, -0.34]} scale={[11.6, 0.07, 2.35]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#ddd9c9" roughness={0.74} />
+      </mesh>
+      <mesh receiveShadow position={[0, 0.035, 0.62]} scale={[11.8, 0.08, 0.08]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#efe9da" roughness={0.7} />
+      </mesh>
+      {[-3.8, -2.25, -0.7, 0.85, 2.4, 3.95].map((x) => (
+        <mesh receiveShadow key={`lane-${x}`} position={[x, 0.025, 1.26]} scale={[0.52, 0.025, 0.035]}>
+          <boxGeometry />
+          <meshStandardMaterial color="#dfe4dc" roughness={0.62} />
+        </mesh>
+      ))}
+      {[-0.72, -0.42, -0.12, 0.18, 0.48, 0.78].map((x) => (
+        <mesh receiveShadow key={`cross-${x}`} position={[x, 0.045, 1.75]} scale={[0.18, 0.028, 0.72]}>
+          <boxGeometry />
+          <meshStandardMaterial color="#f8f5e9" roughness={0.58} />
+        </mesh>
+      ))}
+      {[-5.65, 5.65].map((x) => (
+        <mesh castShadow receiveShadow key={`edge-${x}`} position={[x, 0.1, 0.28]} scale={[0.12, 0.22, 3.05]}>
+          <boxGeometry />
+          <meshStandardMaterial color="#66776c" roughness={0.78} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function PharmacyFacade() {
+  return (
+    <group position={[0, 0, -1.82]}>
+      <mesh castShadow receiveShadow position={[0, 1.08, 0]} scale={[2.0, 2.16, 0.56]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#efe7dc" roughness={0.66} />
+      </mesh>
+      <mesh castShadow position={[0, 2.26, 0.02]} scale={[2.22, 0.18, 0.64]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#34453f" roughness={0.72} />
+      </mesh>
+      <mesh castShadow position={[0, 1.72, 0.32]} scale={[1.62, 0.26, 0.06]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#d71925" emissive="#6a0710" emissiveIntensity={0.14} roughness={0.48} />
+      </mesh>
+      <mesh castShadow position={[-0.68, 1.72, 0.37]} scale={[0.16, 0.04, 0.045]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#ffffff" roughness={0.45} />
+      </mesh>
+      <mesh castShadow position={[-0.68, 1.72, 0.375]} scale={[0.045, 0.16, 0.045]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#ffffff" roughness={0.45} />
+      </mesh>
+      <Text color="#fff" fontSize={0.14} maxWidth={1.08} position={[0.2, 1.72, 0.385]}>
+        KIRMIZI TABELA
+      </Text>
+      <mesh castShadow position={[0, 1.2, 0.34]} scale={[1.82, 0.16, 0.54]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#f7f3e7" roughness={0.58} />
+      </mesh>
+      {[-0.72, -0.36, 0, 0.36, 0.72].map((x, index) => (
+        <mesh castShadow key={`awning-${x}`} position={[x, 1.13, 0.43]} scale={[0.18, 0.12, 0.44]}>
+          <boxGeometry />
+          <meshStandardMaterial color={index % 2 === 0 ? "#e42b31" : "#fff7eb"} roughness={0.54} />
+        </mesh>
+      ))}
+      {[-0.44, 0.44].map((x) => (
+        <mesh castShadow key={`door-${x}`} position={[x, 0.53, 0.315]} scale={[0.36, 0.86, 0.045]}>
+          <boxGeometry />
+          <meshStandardMaterial color="#dbe9ea" roughness={0.2} metalness={0.08} transparent opacity={0.82} />
+        </mesh>
+      ))}
+      <mesh castShadow position={[0, 0.52, 0.36]} scale={[0.038, 0.82, 0.04]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#5f706b" roughness={0.58} />
+      </mesh>
+      {[-0.9, 0.9].map((x) => (
+        <mesh castShadow key={`window-${x}`} position={[x, 0.62, 0.315]} scale={[0.28, 0.52, 0.04]}>
+          <boxGeometry />
+          <meshStandardMaterial color="#d8eceb" roughness={0.24} metalness={0.05} transparent opacity={0.8} />
+        </mesh>
+      ))}
+      <mesh receiveShadow position={[0, 0.08, 0.53]} scale={[1.38, 0.12, 0.34]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#cfc9b7" roughness={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
+function DepotWarehouse() {
+  return (
+    <group position={[-4.72, 0, -0.32]} rotation={[0, 0.05, 0]}>
+      <mesh castShadow receiveShadow position={[0, 0.72, 0]} scale={[1.46, 1.44, 0.82]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#dfceb3" roughness={0.76} />
+      </mesh>
+      <mesh castShadow position={[0, 1.55, 0.02]} scale={[1.66, 0.18, 0.92]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#3e5049" roughness={0.7} />
+      </mesh>
+      <mesh castShadow position={[0, 1.02, 0.45]} scale={[1.05, 0.24, 0.05]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#f7f1dc" roughness={0.54} />
+      </mesh>
+      <Text color="#25352e" fontSize={0.11} maxWidth={0.92} position={[0, 1.02, 0.49]}>
+        ECZA DEPOSU
+      </Text>
+      <mesh castShadow position={[-0.28, 0.38, 0.46]} scale={[0.48, 0.7, 0.045]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#b9aa91" roughness={0.72} />
+      </mesh>
+      {[0.18, 0.34, 0.5].map((y) => (
+        <mesh castShadow key={`roll-${y}`} position={[-0.28, y, 0.49]} scale={[0.5, 0.015, 0.025]}>
+          <boxGeometry />
+          <meshStandardMaterial color="#6c776e" roughness={0.68} />
+        </mesh>
+      ))}
+      <DeliveryTruck position={[0.82, 0, 0.95]} />
+    </group>
+  );
+}
+
+function DeliveryTruck({ position }: { position: Vec3 }) {
+  return (
+    <group position={position} rotation={[0, -0.18, 0]} scale={[0.72, 0.72, 0.72]}>
+      <mesh castShadow position={[0, 0.34, 0]} scale={[0.82, 0.46, 0.42]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#f8f4e7" roughness={0.58} />
+      </mesh>
+      <mesh castShadow position={[-0.5, 0.28, 0.02]} scale={[0.36, 0.36, 0.4]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#e6efe9" roughness={0.52} />
+      </mesh>
+      <Text color="#b21f2d" fontSize={0.11} position={[0.08, 0.42, 0.24]}>
+        ecza
+      </Text>
+      {[-0.48, 0.42].map((x) => (
+        <mesh castShadow key={`wheel-${x}`} position={[x, 0.08, 0.24]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.105, 0.105, 0.06, 18]} />
+          <meshStandardMaterial color="#17201d" roughness={0.72} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function SgkOffice() {
+  return (
+    <group position={[4.65, 0, -0.62]} rotation={[0, -0.04, 0]}>
+      <mesh castShadow receiveShadow position={[0, 0.82, 0]} scale={[1.58, 1.64, 0.76]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#d9e5e8" roughness={0.72} />
+      </mesh>
+      <mesh castShadow position={[0, 1.72, 0.02]} scale={[1.72, 0.18, 0.86]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#3f575b" roughness={0.68} />
+      </mesh>
+      <mesh castShadow position={[0, 1.08, 0.42]} scale={[1.1, 0.26, 0.05]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#f6fbff" roughness={0.48} />
+      </mesh>
+      <Text color="#293c40" fontSize={0.18} position={[0, 1.08, 0.46]}>
+        SGK
+      </Text>
+      {[-0.54, 0, 0.54].map((x) => (
+        <mesh castShadow key={`sgk-col-${x}`} position={[x, 0.46, 0.45]} scale={[0.08, 0.82, 0.08]}>
+          <boxGeometry />
+          <meshStandardMaterial color="#edf3ef" roughness={0.62} />
+        </mesh>
+      ))}
+      <mesh receiveShadow position={[0, 0.08, 0.6]} scale={[1.32, 0.11, 0.36]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#c5d1d0" roughness={0.7} />
+      </mesh>
+      <mesh castShadow position={[0.74, 1.28, 0.47]} scale={[0.26, 0.16, 0.035]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#c51d2a" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+function BankBranch() {
+  return (
+    <group position={[2.9, 0, 0.58]} rotation={[0, -0.08, 0]}>
+      <mesh castShadow receiveShadow position={[0, 0.52, 0]} scale={[1.18, 1.04, 0.58]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#e8e4d8" roughness={0.72} />
+      </mesh>
+      <mesh castShadow position={[0, 1.12, 0.02]} scale={[1.34, 0.16, 0.66]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#3a4b45" roughness={0.66} />
+      </mesh>
+      <mesh castShadow position={[0, 0.72, 0.33]} scale={[0.96, 0.26, 0.05]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#fbfaf2" roughness={0.45} />
+      </mesh>
+      <Text color="#23342e" fontSize={0.13} maxWidth={0.9} position={[0, 0.72, 0.37]}>
+        BANKA POS
+      </Text>
+      <mesh castShadow position={[-0.38, 0.34, 0.35]} scale={[0.32, 0.5, 0.05]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#d9ebe9" roughness={0.22} metalness={0.04} />
+      </mesh>
+      <mesh castShadow position={[0.34, 0.36, 0.35]} scale={[0.34, 0.56, 0.055]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#68746d" roughness={0.6} />
+      </mesh>
+      <mesh castShadow position={[0.34, 0.48, 0.39]} scale={[0.22, 0.12, 0.025]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#b8d4da" emissive="#2a5962" emissiveIntensity={0.08} roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+function StreetDetails() {
+  return (
+    <group>
+      <Tree position={[-5.2, 0, -1.7]} />
+      <Tree position={[5.35, 0, -1.65]} />
+      <Tree position={[1.95, 0, -2.25]} scale={0.82} />
+      <LampPost position={[-2.55, 0, 0.52]} />
+      <LampPost position={[3.72, 0, 0.55]} />
+      {[-4.0, -3.72, 4.02, 4.32].map((x) => (
+        <group key={`cone-${x}`} position={[x, 0, 1.9]} scale={[0.58, 0.58, 0.58]}>
+          <mesh castShadow position={[0, 0.16, 0]}>
+            <coneGeometry args={[0.12, 0.32, 16]} />
+            <meshStandardMaterial color="#ef8a23" roughness={0.56} />
+          </mesh>
+          <mesh castShadow position={[0, 0.18, 0]} scale={[1, 0.14, 1]}>
+            <cylinderGeometry args={[0.09, 0.09, 0.03, 16]} />
+            <meshStandardMaterial color="#fff6e9" roughness={0.45} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function Tree({ position, scale = 1 }: { position: Vec3; scale?: number }) {
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <mesh castShadow position={[0, 0.38, 0]}>
+        <cylinderGeometry args={[0.055, 0.075, 0.76, 10]} />
+        <meshStandardMaterial color="#765b3b" roughness={0.74} />
+      </mesh>
+      <mesh castShadow position={[0, 0.9, 0]} scale={[0.72, 0.54, 0.72]}>
+        <sphereGeometry args={[0.46, 18, 14]} />
+        <meshStandardMaterial color="#4c9d67" roughness={0.82} />
+      </mesh>
+      <mesh castShadow position={[0.22, 0.76, 0.06]} scale={[0.48, 0.36, 0.48]}>
+        <sphereGeometry args={[0.38, 16, 12]} />
+        <meshStandardMaterial color="#3e8e5d" roughness={0.82} />
+      </mesh>
+    </group>
+  );
+}
+
+function LampPost({ position }: { position: Vec3 }) {
+  return (
+    <group position={position}>
+      <mesh castShadow position={[0, 0.48, 0]}>
+        <cylinderGeometry args={[0.025, 0.035, 0.96, 12]} />
+        <meshStandardMaterial color="#3a4743" roughness={0.62} />
+      </mesh>
+      <mesh castShadow position={[0.14, 0.96, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.018, 0.018, 0.3, 10]} />
+        <meshStandardMaterial color="#3a4743" roughness={0.62} />
+      </mesh>
+      <mesh castShadow position={[0.29, 0.93, 0]} scale={[0.14, 0.09, 0.14]}>
+        <sphereGeometry args={[1, 14, 10]} />
+        <meshStandardMaterial color="#fff4c5" emissive="#c89b38" emissiveIntensity={0.12} roughness={0.46} />
+      </mesh>
+    </group>
   );
 }
 
@@ -645,7 +946,7 @@ function NpcLine({ count }: { count: number }) {
   return (
     <group>
       {Array.from({ length: Math.min(5, count) }, (_, index) => (
-        <group key={index} position={[-1.5 - index * 0.46, 0, 1.92 - index * 0.08]} scale={[0.74, 0.74, 0.74]}>
+        <group key={index} position={[-0.85 - index * 0.42, 0, 0.92 + index * 0.14]} rotation={[0, 0.08, 0]} scale={[0.68, 0.68, 0.68]}>
           <AvatarModel outfit={index % 2 === 0 ? "black" : "white"} />
         </group>
       ))}
