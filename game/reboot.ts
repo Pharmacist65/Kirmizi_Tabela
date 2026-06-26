@@ -1,6 +1,18 @@
 export type SceneArea = "street" | "pharmacy";
 export type ScenarioId = "new" | "takeover" | "crisis";
-export type OutfitId = "red" | "white" | "black";
+export type OutfitId =
+  | "female-red"
+  | "female-red-mask"
+  | "female-white"
+  | "female-white-mask"
+  | "female-black"
+  | "female-black-mask"
+  | "male-red"
+  | "male-red-mask"
+  | "male-white"
+  | "male-white-mask"
+  | "male-black"
+  | "male-black-mask";
 export type HotspotId = "pharmacy-door" | "depot" | "sgk-building" | "bank" | "counter" | "shelf" | "storage" | "pos" | "sgk-desk" | "exit";
 export type Vec3 = [number, number, number];
 
@@ -89,10 +101,19 @@ export const scenarioCards: {
   }
 ];
 
-export const outfitCards: { id: OutfitId; label: string; coat: string; accent: string; pants: string }[] = [
-  { id: "red", label: "Kırmızı önlük", coat: "#b21f2d", accent: "#f7f1ec", pants: "#202a31" },
-  { id: "white", label: "Beyaz önlük", coat: "#f5f4ea", accent: "#b21f2d", pants: "#27333a" },
-  { id: "black", label: "Siyah forma", coat: "#20282a", accent: "#e0a13a", pants: "#171f24" }
+export const outfitCards: { id: OutfitId; label: string; coat: string; accent: string; pants: string; gender: "Kadın" | "Erkek"; mask: boolean }[] = [
+  { id: "female-red", label: "Kırmızı önlük", coat: "#b21f2d", accent: "#f7f1ec", pants: "#202a31", gender: "Kadın", mask: false },
+  { id: "female-red-mask", label: "Kırmızı önlük + maske", coat: "#b21f2d", accent: "#f7f1ec", pants: "#202a31", gender: "Kadın", mask: true },
+  { id: "female-white", label: "Beyaz önlük", coat: "#f5f4ea", accent: "#b21f2d", pants: "#27333a", gender: "Kadın", mask: false },
+  { id: "female-white-mask", label: "Beyaz önlük + maske", coat: "#f5f4ea", accent: "#b21f2d", pants: "#27333a", gender: "Kadın", mask: true },
+  { id: "female-black", label: "Siyah forma", coat: "#20282a", accent: "#e0a13a", pants: "#171f24", gender: "Kadın", mask: false },
+  { id: "female-black-mask", label: "Siyah forma + maske", coat: "#20282a", accent: "#e0a13a", pants: "#171f24", gender: "Kadın", mask: true },
+  { id: "male-red", label: "Kırmızı önlük", coat: "#b21f2d", accent: "#f7f1ec", pants: "#202a31", gender: "Erkek", mask: false },
+  { id: "male-red-mask", label: "Kırmızı önlük + maske", coat: "#b21f2d", accent: "#f7f1ec", pants: "#202a31", gender: "Erkek", mask: true },
+  { id: "male-white", label: "Beyaz önlük", coat: "#f5f4ea", accent: "#b21f2d", pants: "#27333a", gender: "Erkek", mask: false },
+  { id: "male-white-mask", label: "Beyaz önlük + maske", coat: "#f5f4ea", accent: "#b21f2d", pants: "#27333a", gender: "Erkek", mask: true },
+  { id: "male-black", label: "Siyah forma", coat: "#20282a", accent: "#e0a13a", pants: "#171f24", gender: "Erkek", mask: false },
+  { id: "male-black-mask", label: "Siyah forma + maske", coat: "#20282a", accent: "#e0a13a", pants: "#171f24", gender: "Erkek", mask: true }
 ];
 
 export const streetHotspots: Hotspot[] = [

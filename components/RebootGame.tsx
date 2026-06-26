@@ -27,21 +27,94 @@ import {
 } from "@/game/reboot";
 
 const MODEL_PATHS = {
-  avatarCustomer: "/assets/game/models/avatar_customer.glb",
-  avatarPharmacistBlack: "/assets/game/models/avatar_pharmacist_black.glb",
-  avatarPharmacistRed: "/assets/game/models/avatar_pharmacist_red.glb",
-  avatarPharmacistWhite: "/assets/game/models/avatar_pharmacist_white.glb",
-  bankBranch: "/assets/game/models/bank_branch.glb",
-  depotWarehouse: "/assets/game/models/depot_warehouse.glb",
-  pharmacyFacade: "/assets/game/models/pharmacy_facade.glb",
-  sgkOffice: "/assets/game/models/sgk_office.glb",
-  streetBase: "/assets/game/models/street_base.glb",
-  streetProps: "/assets/game/models/street_props.glb"
+  apartmentBlock: "/assets/game/models/buildings/apartment_block.glb",
+  bankBranch: "/assets/game/models/buildings/bank_branch.glb",
+  cafeCorner: "/assets/game/models/buildings/cafe_corner.glb",
+  clinicBuilding: "/assets/game/models/buildings/clinic_building.glb",
+  depotWarehouse: "/assets/game/models/buildings/depot_warehouse.glb",
+  districtHealthOffice: "/assets/game/models/buildings/district_health_office.glb",
+  mallBlock: "/assets/game/models/buildings/mall_block.glb",
+  pharmacyFacade: "/assets/game/models/buildings/pharmacy_facade.glb",
+  residentialMarket: "/assets/game/models/buildings/residential_market.glb",
+  sgkOffice: "/assets/game/models/buildings/sgk_office.glb",
+  customer01: "/assets/game/models/customers/customer_01.glb",
+  customer02: "/assets/game/models/customers/customer_02.glb",
+  customer03: "/assets/game/models/customers/customer_03.glb",
+  customer04: "/assets/game/models/customers/customer_04.glb",
+  customer05: "/assets/game/models/customers/customer_05.glb",
+  customer06: "/assets/game/models/customers/customer_06.glb",
+  customer07: "/assets/game/models/customers/customer_07.glb",
+  customer08: "/assets/game/models/customers/customer_08.glb",
+  customer09: "/assets/game/models/customers/customer_09.glb",
+  customer10: "/assets/game/models/customers/customer_10.glb",
+  interiorCounter: "/assets/game/models/interiors/interior_counter.glb",
+  medicineShelf: "/assets/game/models/interiors/medicine_shelf.glb",
+  sgkDesk: "/assets/game/models/interiors/sgk_desk.glb",
+  storageRack: "/assets/game/models/interiors/storage_rack.glb",
+  flowerPlanter: "/assets/game/models/nature/flower_planter.glb",
+  shrub: "/assets/game/models/nature/shrub.glb",
+  treePlane: "/assets/game/models/nature/tree_plane.glb",
+  treeRound: "/assets/game/models/nature/tree_round.glb",
+  treeTall: "/assets/game/models/nature/tree_tall.glb",
+  playerFemaleBlack: "/assets/game/models/players/player_female_black.glb",
+  playerFemaleBlackMask: "/assets/game/models/players/player_female_black_mask.glb",
+  playerFemaleRed: "/assets/game/models/players/player_female_red.glb",
+  playerFemaleRedMask: "/assets/game/models/players/player_female_red_mask.glb",
+  playerFemaleWhite: "/assets/game/models/players/player_female_white.glb",
+  playerFemaleWhiteMask: "/assets/game/models/players/player_female_white_mask.glb",
+  playerMaleBlack: "/assets/game/models/players/player_male_black.glb",
+  playerMaleBlackMask: "/assets/game/models/players/player_male_black_mask.glb",
+  playerMaleRed: "/assets/game/models/players/player_male_red.glb",
+  playerMaleRedMask: "/assets/game/models/players/player_male_red_mask.glb",
+  playerMaleWhite: "/assets/game/models/players/player_male_white.glb",
+  playerMaleWhiteMask: "/assets/game/models/players/player_male_white_mask.glb",
+  bench: "/assets/game/models/props/bench.glb",
+  lampPost: "/assets/game/models/props/lamp_post.glb",
+  parcelBox: "/assets/game/models/props/parcel_box.glb",
+  pharmacyCrossSign: "/assets/game/models/props/pharmacy_cross_sign.glb",
+  posTerminal: "/assets/game/models/props/pos_terminal.glb",
+  productCrate: "/assets/game/models/props/product_crate.glb",
+  streetProps: "/assets/game/models/props/street_props.glb",
+  trafficCone: "/assets/game/models/props/traffic_cone.glb",
+  trashBin: "/assets/game/models/props/trash_bin.glb",
+  staff01: "/assets/game/models/staff/staff_01_counter.glb",
+  staff02: "/assets/game/models/staff/staff_02_sgk.glb",
+  staff03: "/assets/game/models/staff/staff_03_stock.glb",
+  staff04: "/assets/game/models/staff/staff_04_dermo.glb",
+  staff05: "/assets/game/models/staff/staff_05_depot.glb",
+  staff06: "/assets/game/models/staff/staff_06_counter.glb",
+  staff07: "/assets/game/models/staff/staff_07_sgk.glb",
+  staff08: "/assets/game/models/staff/staff_08_stock.glb",
+  staff09: "/assets/game/models/staff/staff_09_dermo.glb",
+  staff10: "/assets/game/models/staff/staff_10_manager.glb",
+  roadCrosswalk: "/assets/game/models/streets/road_crosswalk.glb",
+  roadStraight: "/assets/game/models/streets/road_straight.glb",
+  sidewalkTile: "/assets/game/models/streets/sidewalk_tile.glb",
+  smallPlanetPatch: "/assets/game/models/streets/small_planet_patch.glb",
+  streetBase: "/assets/game/models/streets/street_base.glb"
 } as const;
 
 Object.values(MODEL_PATHS).forEach((modelPath) => useGLTF.preload(modelPath));
 
 type ModelAssetName = keyof typeof MODEL_PATHS;
+
+const PLAYER_MODEL_BY_OUTFIT: Record<OutfitId, ModelAssetName> = {
+  "female-black": "playerFemaleBlack",
+  "female-black-mask": "playerFemaleBlackMask",
+  "female-red": "playerFemaleRed",
+  "female-red-mask": "playerFemaleRedMask",
+  "female-white": "playerFemaleWhite",
+  "female-white-mask": "playerFemaleWhiteMask",
+  "male-black": "playerMaleBlack",
+  "male-black-mask": "playerMaleBlackMask",
+  "male-red": "playerMaleRed",
+  "male-red-mask": "playerMaleRedMask",
+  "male-white": "playerMaleWhite",
+  "male-white-mask": "playerMaleWhiteMask"
+};
+
+const CUSTOMER_MODEL_NAMES = ["customer01", "customer02", "customer03", "customer04", "customer05", "customer06", "customer07", "customer08", "customer09", "customer10"] as const satisfies readonly ModelAssetName[];
+const STAFF_MODEL_NAMES = ["staff01", "staff02", "staff03", "staff04", "staff05", "staff06", "staff07", "staff08", "staff09", "staff10"] as const satisfies readonly ModelAssetName[];
 
 function AssetModel({ name, position = [0, 0, 0], rotation = [0, 0, 0], scale = [1, 1, 1] }: { name: ModelAssetName; position?: Vec3; rotation?: Vec3; scale?: Vec3 }) {
   const gltf = useGLTF(MODEL_PATHS[name]);
@@ -49,12 +122,16 @@ function AssetModel({ name, position = [0, 0, 0], rotation = [0, 0, 0], scale = 
 }
 
 function AvatarModel({ outfit, scale = 1 }: { outfit: OutfitId; scale?: number }) {
-  const name = outfit === "white" ? "avatarPharmacistWhite" : outfit === "black" ? "avatarPharmacistBlack" : "avatarPharmacistRed";
+  const name = PLAYER_MODEL_BY_OUTFIT[outfit];
   return <AssetModel name={name} scale={[scale, scale, scale]} />;
 }
 
-function CustomerModel({ scale = 1 }: { scale?: number }) {
-  return <AssetModel name="avatarCustomer" scale={[scale, scale, scale]} />;
+function CustomerModel({ index = 0, scale = 1 }: { index?: number; scale?: number }) {
+  return <AssetModel name={CUSTOMER_MODEL_NAMES[index % CUSTOMER_MODEL_NAMES.length]} scale={[scale, scale, scale]} />;
+}
+
+function StaffModel({ index = 0, scale = 1 }: { index?: number; scale?: number }) {
+  return <AssetModel name={STAFF_MODEL_NAMES[index % STAFF_MODEL_NAMES.length]} scale={[scale, scale, scale]} />;
 }
 
 function HotspotMarker({ active, hotspot, onTravel }: { active: boolean; hotspot: Hotspot; onTravel: (hotspot: Hotspot) => void }) {
@@ -214,6 +291,7 @@ function StreetScene({
       <DepotWarehouse />
       <SgkOffice />
       <BankBranch />
+      <WorldFill />
       <StreetDetails />
 
       {hotspots.map((hotspot) => (
@@ -265,6 +343,7 @@ function PharmacyScene({
       <StorageBoxes closed={state.storageBoxes} opened={state.openedBoxes} />
       <Desk label="SGK" position={[2.25, 0.48, 0.92]} color="#d8e8ef" />
       <Desk label="POS" position={[0.92, 0.42, 0.48]} color="#f7f8f2" />
+      <PharmacyStaffCrew />
       {hotspots.map((hotspot) => (
         <HotspotMarker active={activeTarget === hotspot.id || travelIntent?.hotspotId === hotspot.id} hotspot={hotspot} key={hotspot.id} onTravel={onTravel} />
       ))}
@@ -276,6 +355,47 @@ function PharmacyScene({
 
 function StreetDiorama() {
   return <AssetModel name="streetBase" />;
+}
+
+function WorldFill() {
+  const buildings: { name: ModelAssetName; position: Vec3; rotation?: Vec3; scale?: Vec3; label: string; labelY: number }[] = [
+    { name: "apartmentBlock", position: [-2.85, 0, -2.28], rotation: [0, 0.08, 0], scale: [0.84, 0.84, 0.84], label: "Apartman", labelY: 1.82 },
+    { name: "cafeCorner", position: [1.78, 0, -2.44], rotation: [0, -0.04, 0], scale: [0.84, 0.84, 0.84], label: "Kafe", labelY: 1.1 },
+    { name: "clinicBuilding", position: [-5.68, 0, -1.35], rotation: [0, 0.26, 0], scale: [0.78, 0.78, 0.78], label: "Klinik", labelY: 1.26 },
+    { name: "mallBlock", position: [5.78, 0, -1.48], rotation: [0, -0.24, 0], scale: [0.74, 0.74, 0.74], label: "AVM", labelY: 1.42 },
+    { name: "districtHealthOffice", position: [-3.48, 0, 2.45], rotation: [0, -0.1, 0], scale: [0.66, 0.66, 0.66], label: "İlçe Sağlık", labelY: 1.08 },
+    { name: "residentialMarket", position: [4.18, 0, 2.5], rotation: [0, 0.14, 0], scale: [0.72, 0.72, 0.72], label: "Market", labelY: 1.0 }
+  ];
+
+  const decorations: { name: ModelAssetName; position: Vec3; rotation?: Vec3; scale?: Vec3 }[] = [
+    { name: "treeRound", position: [-5.35, 0, 0.56], scale: [0.7, 0.7, 0.7] },
+    { name: "treeTall", position: [5.18, 0, 0.56], scale: [0.68, 0.68, 0.68] },
+    { name: "treePlane", position: [-1.7, 0, -2.52], rotation: [0, -0.28, 0], scale: [0.6, 0.6, 0.6] },
+    { name: "bench", position: [-1.9, 0, 2.16], rotation: [0, 0.2, 0], scale: [0.78, 0.78, 0.78] },
+    { name: "trashBin", position: [-1.25, 0, 2.15], scale: [0.65, 0.65, 0.65] },
+    { name: "flowerPlanter", position: [0.95, 0, -1.34], scale: [0.76, 0.76, 0.76] },
+    { name: "shrub", position: [3.62, 0, -1.42], scale: [0.75, 0.75, 0.75] },
+    { name: "pharmacyCrossSign", position: [1.2, 0, -1.48], rotation: [0, -0.06, 0], scale: [0.72, 0.72, 0.72] },
+    { name: "roadCrosswalk", position: [0, -0.02, 1.75], scale: [0.56, 0.56, 0.56] },
+    { name: "sidewalkTile", position: [-4.25, -0.01, 2.14], scale: [0.75, 0.75, 0.75] },
+    { name: "sidewalkTile", position: [4.8, -0.01, 2.1], rotation: [0, 0.12, 0], scale: [0.75, 0.75, 0.75] }
+  ];
+
+  return (
+    <group>
+      {buildings.map((item) => (
+        <group key={item.name} position={item.position} rotation={item.rotation ?? [0, 0, 0]} scale={item.scale ?? [1, 1, 1]}>
+          <AssetModel name={item.name} />
+          <Text color="#22312d" fontSize={0.1} maxWidth={0.9} position={[0, item.labelY, 0.43]}>
+            {item.label}
+          </Text>
+        </group>
+      ))}
+      {decorations.map((item, index) => (
+        <AssetModel key={`${item.name}-${index}`} name={item.name} position={item.position} rotation={item.rotation ?? [0, 0, 0]} scale={item.scale ?? [1, 1, 1]} />
+      ))}
+    </group>
+  );
 }
 
 function PharmacyFacade() {
@@ -327,6 +447,28 @@ function BankBranch() {
 
 function StreetDetails() {
   return <AssetModel name="streetProps" />;
+}
+
+function PharmacyStaffCrew() {
+  const crew: { index: number; position: Vec3; rotation?: Vec3; label: string }[] = [
+    { index: 0, position: [-0.86, 0, 0.08], rotation: [0, 0.08, 0], label: "Banko" },
+    { index: 1, position: [2.05, 0, 0.35], rotation: [0, -0.34, 0], label: "SGK" },
+    { index: 2, position: [2.65, 0, -1.02], rotation: [0, -0.58, 0], label: "Stok" },
+    { index: 3, position: [-1.72, 0, -0.76], rotation: [0, 0.38, 0], label: "Dermo" }
+  ];
+
+  return (
+    <group>
+      {crew.map((person) => (
+        <group key={person.label} position={person.position} rotation={person.rotation ?? [0, 0, 0]} scale={[0.72, 0.72, 0.72]}>
+          <StaffModel index={person.index} />
+          <Html center distanceFactor={7.2} position={[0, 1.28, 0]}>
+            <span className="reboot-world-label subtle">{person.label}</span>
+          </Html>
+        </group>
+      ))}
+    </group>
+  );
 }
 
 function Wall({ position, scale }: { position: Vec3; scale: Vec3 }) {
@@ -397,7 +539,7 @@ function NpcLine({ count }: { count: number }) {
     <group>
       {Array.from({ length: Math.min(5, count) }, (_, index) => (
         <group key={index} position={[-0.85 - index * 0.42, 0, 0.92 + index * 0.14]} rotation={[0, 0.08, 0]} scale={[0.68, 0.68, 0.68]}>
-          <CustomerModel />
+          <CustomerModel index={index} />
         </group>
       ))}
     </group>
@@ -409,7 +551,7 @@ function InteriorQueue({ count }: { count: number }) {
     <group>
       {Array.from({ length: Math.min(5, count) }, (_, index) => (
         <group key={index} position={[-1.2 - index * 0.36, 0, 1.4 + index * 0.18]} scale={[0.72, 0.72, 0.72]}>
-          <CustomerModel />
+          <CustomerModel index={index + 5} />
         </group>
       ))}
     </group>
@@ -440,7 +582,7 @@ function RebootScene({
 
 export function RebootGame() {
   const [selectedScenario, setSelectedScenario] = useState<ScenarioId>("new");
-  const [selectedOutfit, setSelectedOutfit] = useState<OutfitId>("red");
+  const [selectedOutfit, setSelectedOutfit] = useState<OutfitId>("female-red");
   const [game, setGame] = useState<RebootState | null>(null);
   const [activeTarget, setActiveTarget] = useState<HotspotId | null>(null);
   const [travelIntent, setTravelIntent] = useState<TravelIntent | null>(null);
@@ -535,6 +677,7 @@ export function RebootGame() {
                   <button className={selectedOutfit === outfit.id ? "active" : ""} key={outfit.id} onClick={() => setSelectedOutfit(outfit.id)}>
                     <span className="outfit-swatch" style={{ background: outfit.coat }} />
                     <strong>{outfit.label}</strong>
+                    <em>{outfit.gender} · {outfit.mask ? "Maskeli" : "Maskesiz"}</em>
                   </button>
                 ))}
               </div>

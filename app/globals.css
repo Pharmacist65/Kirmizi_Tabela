@@ -223,13 +223,23 @@ button {
 }
 
 .reboot-choice-grid.outfit {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .reboot-choice-grid.outfit button {
-  min-height: 68px;
+  min-height: 82px;
   grid-template-columns: auto 1fr;
   align-items: center;
+  align-content: center;
+  gap: 6px 10px;
+}
+
+.reboot-choice-grid.outfit button em {
+  grid-column: 2;
+  font-size: 0.76rem;
 }
 
 .outfit-swatch {
@@ -489,6 +499,15 @@ button {
   background: rgba(178, 31, 45, 0.94);
   color: #fff;
   box-shadow: 0 12px 30px rgba(178, 31, 45, 0.26);
+}
+
+.reboot-world-label.subtle {
+  cursor: default;
+  padding: 6px 9px;
+  background: rgba(31, 48, 42, 0.82);
+  color: #fff;
+  font-size: 0.62rem;
+  pointer-events: none;
 }
 
 .reboot-day-end {
