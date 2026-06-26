@@ -137,7 +137,7 @@ function StaffModel({ index = 0, scale = 1 }: { index?: number; scale?: number }
 function HotspotMarker({ active, hotspot, onTravel }: { active: boolean; hotspot: Hotspot; onTravel: (hotspot: Hotspot) => void }) {
   return (
     <group position={hotspot.position}>
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh receiveShadow>
         <cylinderGeometry args={[hotspot.radius * 0.38, hotspot.radius * 0.38, 0.035, 32]} />
         <meshStandardMaterial color={active ? "#b21f2d" : "#f6f3e8"} emissive={active ? "#82131d" : "#000000"} emissiveIntensity={active ? 0.25 : 0} />
       </mesh>
@@ -149,6 +149,47 @@ function HotspotMarker({ active, hotspot, onTravel }: { active: boolean; hotspot
           {hotspot.label}
         </button>
       </Html>
+    </group>
+  );
+}
+
+function ZonePlate({
+  active = false,
+  color,
+  label,
+  position,
+  rotation = 0,
+  size
+}: {
+  active?: boolean;
+  color: string;
+  label: string;
+  position: Vec3;
+  rotation?: number;
+  size: [number, number];
+}) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      <mesh position={[0, 0.022, 0]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={size} />
+        <meshBasicMaterial color={color} depthWrite={false} transparent opacity={active ? 0.34 : 0.2} />
+      </mesh>
+      <mesh position={[0, 0.04, -size[1] / 2]} scale={[size[0], 0.024, 0.045]}>
+        <boxGeometry />
+        <meshBasicMaterial color={color} transparent opacity={active ? 0.88 : 0.64} />
+      </mesh>
+      <Text
+        color="#26352f"
+        fontSize={Math.min(0.18, size[0] * 0.1)}
+        fontWeight={800}
+        maxWidth={size[0] * 0.86}
+        outlineColor="rgba(255,255,255,0.78)"
+        outlineWidth={0.006}
+        position={[0, 0.058, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        {label}
+      </Text>
     </group>
   );
 }
@@ -172,9 +213,11 @@ function PlayerController({
 }) {
   const ref = useRef<Group>(null);
   const keysRef = useRef<Record<string, boolean>>({});
+  const cameraYawRef = useRef(0);
+  const draggingRef = useRef(false);
   const lastTargetRef = useRef<HotspotId | null>(null);
   const lastTravelRef = useRef<number | null>(null);
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const bounds = scene === "street" ? { minX: -5.8, maxX: 5.6, minZ: -2.4, maxZ: 3.2 } : { minX: -3.05, maxX: 3.05, minZ: -2.28, maxZ: 2.42 };
 
   useEffect(() => {
@@ -186,7 +229,7 @@ function PlayerController({
   }, [initialPosition[0], initialPosition[1], initialPosition[2], onTargetChange, scene]);
 
   useEffect(() => {
-    const tracked = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+    const tracked = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyR", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
     const down = (event: KeyboardEvent) => {
       if (!tracked.has(event.code)) return;
       event.preventDefault();
@@ -205,15 +248,54 @@ function PlayerController({
     };
   }, []);
 
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const pointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      draggingRef.current = true;
+      canvas.setPointerCapture?.(event.pointerId);
+    };
+    const pointerMove = (event: PointerEvent) => {
+      if (!draggingRef.current) return;
+      cameraYawRef.current -= event.movementX * 0.006;
+    };
+    const pointerUp = (event: PointerEvent) => {
+      draggingRef.current = false;
+      canvas.releasePointerCapture?.(event.pointerId);
+    };
+    canvas.addEventListener("pointerdown", pointerDown);
+    canvas.addEventListener("pointermove", pointerMove);
+    canvas.addEventListener("pointerup", pointerUp);
+    canvas.addEventListener("pointerleave", pointerUp);
+    return () => {
+      canvas.removeEventListener("pointerdown", pointerDown);
+      canvas.removeEventListener("pointermove", pointerMove);
+      canvas.removeEventListener("pointerup", pointerUp);
+      canvas.removeEventListener("pointerleave", pointerUp);
+    };
+  }, [gl]);
+
   useFrame((_, delta) => {
     if (!ref.current) return;
     const keys = keysRef.current;
+    if (keys.KeyQ) cameraYawRef.current += delta * 1.75;
+    if (keys.KeyR) cameraYawRef.current -= delta * 1.75;
+
     const manualDx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
     const manualDz = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0);
-    let dx = manualDx;
-    let dz = manualDz;
+    const isManualMove = manualDx !== 0 || manualDz !== 0;
+    let dx = 0;
+    let dz = 0;
 
-    if (manualDx === 0 && manualDz === 0 && travelIntent?.scene === scene) {
+    if (isManualMove) {
+      const yaw = cameraYawRef.current;
+      const forward = -manualDz;
+      const strafe = manualDx;
+      dx = strafe * Math.cos(yaw) - forward * Math.sin(yaw);
+      dz = -strafe * Math.sin(yaw) - forward * Math.cos(yaw);
+    }
+
+    if (!isManualMove && travelIntent?.scene === scene) {
       const toX = travelIntent.position[0] - ref.current.position.x;
       const toZ = travelIntent.position[2] - ref.current.position.z;
       const distance = Math.hypot(toX, toZ);
@@ -249,15 +331,20 @@ function PlayerController({
       onTargetChange(nextTarget);
     }
 
-    const cameraOffset = scene === "street" ? new Vector3(0.18, 1.55, 2.85) : new Vector3(0.12, 1.38, 2.48);
+    const cameraHeight = scene === "street" ? 1.62 : 1.46;
+    const cameraDistance = scene === "street" ? 3.25 : 2.88;
+    const yaw = cameraYawRef.current;
+    const cameraOffset = new Vector3(Math.sin(yaw) * cameraDistance, cameraHeight, Math.cos(yaw) * cameraDistance);
     const desired = new Vector3(playerPosition.x, 0, playerPosition.z).add(cameraOffset);
     camera.position.lerp(desired, 0.1);
-    camera.lookAt(playerPosition.x, scene === "street" ? 0.92 : 0.82, playerPosition.z);
+    camera.lookAt(playerPosition.x, scene === "street" ? 0.92 : 0.84, playerPosition.z);
   });
+
+  const avatarScale = scene === "street" ? 0.9 : 0.84;
 
   return (
     <group ref={ref}>
-      <AvatarModel outfit={outfit} />
+      <AvatarModel outfit={outfit} scale={avatarScale} />
       <Html center distanceFactor={9.2} position={[0, 1.74, 0]}>
         <span className="reboot-player-label">Eczacı</span>
       </Html>
@@ -288,6 +375,7 @@ function StreetScene({
       <ambientLight intensity={0.78} />
       <directionalLight castShadow intensity={2.55} position={[4, 7, 5]} shadow-mapSize={[1536, 1536]} />
       <StreetDiorama />
+      <StreetZonePlates activeTarget={activeTarget} />
       <PharmacyFacade />
       <DepotWarehouse />
       <SgkOffice />
@@ -331,6 +419,7 @@ function PharmacyScene({
         <boxGeometry />
         <meshStandardMaterial color="#d9ded4" roughness={0.76} />
       </mesh>
+      <PharmacyZonePlates activeTarget={activeTarget} />
       <Wall position={[0, 1.22, -2.62]} scale={[7.4, 2.44, 0.12]} />
       <Wall position={[-3.72, 1.12, 0]} scale={[0.12, 2.24, 5.25]} />
       <Wall position={[3.72, 1.12, 0]} scale={[0.12, 2.24, 5.25]} />
@@ -357,6 +446,30 @@ function PharmacyScene({
 
 function StreetDiorama() {
   return <AssetModel name="streetBase" />;
+}
+
+function StreetZonePlates({ activeTarget }: { activeTarget: HotspotId | null }) {
+  return (
+    <group>
+      <ZonePlate active={activeTarget === "pharmacy-door"} color="#d71925" label="ECZANE" position={[0, 0, -0.88]} size={[2.1, 0.96]} />
+      <ZonePlate active={activeTarget === "depot"} color="#d7a04e" label="DEPO" position={[-4.72, 0, 0.58]} rotation={0.05} size={[1.9, 1.12]} />
+      <ZonePlate active={activeTarget === "sgk-building"} color="#77bdd0" label="SGK" position={[4.65, 0, -0.08]} rotation={-0.04} size={[1.9, 1.08]} />
+      <ZonePlate active={activeTarget === "bank"} color="#8ab4d6" label="BANKA / POS" position={[2.9, 0, 1.43]} rotation={-0.08} size={[1.74, 0.94]} />
+    </group>
+  );
+}
+
+function PharmacyZonePlates({ activeTarget }: { activeTarget: HotspotId | null }) {
+  return (
+    <group>
+      <ZonePlate active={activeTarget === "counter"} color="#d71925" label="BANKO" position={[-0.35, 0, 0.58]} size={[2.35, 0.95]} />
+      <ZonePlate active={activeTarget === "shelf"} color="#7bb17c" label="RAF" position={[-2.08, 0, -1.2]} size={[1.88, 1.08]} />
+      <ZonePlate active={activeTarget === "storage"} color="#d7a04e" label="DEPO ODASI" position={[2.25, 0, -1.22]} size={[1.52, 1.02]} />
+      <ZonePlate active={activeTarget === "pos"} color="#8ab4d6" label="POS" position={[0.92, 0, 0.42]} size={[1.18, 0.72]} />
+      <ZonePlate active={activeTarget === "sgk-desk"} color="#77bdd0" label="SGK" position={[2.25, 0, 0.9]} size={[1.32, 0.78]} />
+      <ZonePlate active={activeTarget === "exit"} color="#b21f2d" label="ÇIKIŞ" position={[0, 0, 2.16]} size={[1.52, 0.78]} />
+    </group>
+  );
 }
 
 function WorldFill() {
