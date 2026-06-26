@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import {
   BatteryMedium,
   Boxes,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
   Landmark,
   MapPinned,
@@ -11,6 +13,7 @@ import {
   RotateCcw,
   ShieldAlert,
   Store,
+  Target,
   UsersRound,
   Truck,
   WalletCards
@@ -21,7 +24,6 @@ import { DailyActionPanel } from "@/components/DailyActionPanel";
 import { DayReportPanel } from "@/components/DayReportPanel";
 import { FeedbackDock } from "@/components/FeedbackDock";
 import { Leaderboard } from "@/components/Leaderboard";
-import { LocationProfile } from "@/components/LocationProfile";
 import { OpeningTasks } from "@/components/OpeningTasks";
 import { PharmacyWorldClient } from "@/components/PharmacyWorldClient";
 import { PlayGuide } from "@/components/PlayGuide";
@@ -62,6 +64,49 @@ const moduleItems: { id: ModuleId; label: string }[] = [
   { id: "pazar", label: "Pazar" }
 ];
 
+function getDailyFocus(state: GameState, setupLocked: boolean) {
+  const lowestStock = [...state.inventory].sort((a, b) => a.stock / a.capacity - b.stock / b.capacity)[0];
+  const day = ((state.currentDay - 1) % 30) + 1;
+
+  if (setupLocked) {
+    return {
+      title: "Açılış günü kilitli",
+      detail: "Ruhsat, oda, POS, depo ve ilk stok görevlerini bitir; satış ancak sonra başlar.",
+      pressure: "Kurulum"
+    };
+  }
+
+  if (state.complianceRisk >= 38 || day <= 15) {
+    return {
+      title: "SGK takvimini kaçırma",
+      detail: `Ayın ${day}. günü. Dosya kontrolü yapmazsan kesinti riski büyür.`,
+      pressure: "SGK"
+    };
+  }
+
+  if (lowestStock && lowestStock.stock / lowestStock.capacity < 0.35) {
+    return {
+      title: `${lowestStock.name} rafı kritik`,
+      detail: "Depo siparişi veya raf odağı seç; kaçan satış burada başlar.",
+      pressure: "Stok"
+    };
+  }
+
+  if (state.energy < 32) {
+    return {
+      title: "Ekip yoruluyor",
+      detail: "Banko hızı ve memnuniyet düşmeden personel görevini yeniden kur.",
+      pressure: "Vardiya"
+    };
+  }
+
+  return {
+    title: "Bugünün kararını ver",
+    detail: "Raf odağı, personel görevi ve vade kararını seç; sonra günü oynat.",
+    pressure: "Gün Akışı"
+  };
+}
+
 type SavedGame = {
   version: 5;
   state: GameState;
@@ -83,6 +128,7 @@ export default function Home() {
   const [actionResult, setActionResult] = useState<ActionResult | null>(null);
   const [openingTasks, setOpeningTasks] = useState<TimedTask[]>(() => createOpeningTasks());
   const [activeModule, setActiveModule] = useState<ModuleId>("eczane");
+  const [commandDeckOpen, setCommandDeckOpen] = useState(false);
   const [hasGame, setHasGame] = useState(true);
   const [hydrated, setHydrated] = useState(false);
 
@@ -273,7 +319,12 @@ export default function Home() {
       return;
     }
     setActiveModule(module);
+    setCommandDeckOpen(true);
   };
+
+  const dailyFocus = getDailyFocus(state, setupLocked);
+  const lowestStock = [...state.inventory].sort((a, b) => a.stock / a.capacity - b.stock / b.capacity)[0];
+  const stockRatio = lowestStock ? Math.round((lowestStock.stock / Math.max(1, lowestStock.capacity)) * 100) : 0;
 
   return (
     <>
@@ -318,6 +369,10 @@ export default function Home() {
           </div>
 
           <div className="world-top-actions">
+            <button className="ghost-button compact" onClick={() => setCommandDeckOpen((open) => !open)}>
+              {commandDeckOpen ? <ChevronDown size={17} aria-hidden="true" /> : <ChevronUp size={17} aria-hidden="true" />}
+              Komuta
+            </button>
             <button className="ghost-button compact" onClick={pickNewScenario}>
               <MapPinned size={17} aria-hidden="true" />
               Senaryo
@@ -328,6 +383,15 @@ export default function Home() {
             </button>
           </div>
         </header>
+
+        <section className="world-focus-card">
+          <span>{dailyFocus.pressure}</span>
+          <strong>
+            <Target size={18} aria-hidden="true" />
+            {dailyFocus.title}
+          </strong>
+          <p>{dailyFocus.detail}</p>
+        </section>
 
         <aside className="world-side world-side-left">
           <section className="world-panel">
@@ -342,7 +406,26 @@ export default function Home() {
             </p>
           </section>
 
-          <LocationProfile state={state} />
+          <section className="world-panel world-district-card">
+            <div>
+              <span>Lokasyon</span>
+              <strong>
+                {state.city}/{state.district}
+              </strong>
+              <p>{state.locationName}</p>
+            </div>
+            <div className="world-district-grid">
+              <span>
+                Trafik <b>{Math.round(state.traffic)}</b>
+              </span>
+              <span>
+                Reçete <b>{Math.round(state.prescriptionPressure)}</b>
+              </span>
+              <span>
+                OTC/Dermo <b>{Math.round(state.retailPotential)}</b>
+              </span>
+            </div>
+          </section>
 
           <section className="world-panel world-system-panel">
             <div>
@@ -356,6 +439,10 @@ export default function Home() {
             <div>
               <span>Personel morali</span>
               <strong>{Math.round(state.staffMorale)}/100</strong>
+            </div>
+            <div>
+              <span>Kritik raf</span>
+              <strong>{lowestStock ? `${lowestStock.name} ${stockRatio}%` : "Yok"}</strong>
             </div>
           </section>
 
@@ -371,7 +458,7 @@ export default function Home() {
           </div>
         </aside>
 
-        <aside className="world-side world-side-right">
+        <aside className={`world-side world-side-right ${commandDeckOpen ? "is-open" : ""}`}>
           <nav className="world-module-dock" aria-label="Oyun modülleri">
             {moduleItems.map(({ id, label }) => (
             <button
@@ -416,7 +503,7 @@ export default function Home() {
           </section>
         </aside>
 
-        <section className="world-bottom-strip">
+        <section className={`world-bottom-strip ${commandDeckOpen ? "is-open" : ""}`}>
           <div className="world-result-stack">
             <ActionResultPanel result={actionResult} />
             <DayReportPanel report={state.lastDayReport} />

@@ -34,9 +34,9 @@ const zonePositions = {
 } satisfies Record<string, Vec3>;
 
 const phaseLighting: Record<DayPhase, { sky: string; ambient: number; key: number }> = {
-  morning: { sky: "#f6efe2", ambient: 0.66, key: 2.2 },
-  open: { sky: "#edf6fb", ambient: 0.72, key: 2.65 },
-  closing: { sky: "#f7e7d7", ambient: 0.58, key: 1.75 }
+  morning: { sky: "#91d7cf", ambient: 0.74, key: 2.45 },
+  open: { sky: "#a8dfd8", ambient: 0.78, key: 2.75 },
+  closing: { sky: "#f0cda9", ambient: 0.64, key: 1.95 }
 };
 
 const skinTones = ["#e7b68b", "#d59b70", "#f0c49c", "#bc7f5c"];
@@ -415,6 +415,101 @@ function DeliveryScooter({ activeModule, onSelectModule }: { activeModule: Modul
   );
 }
 
+function DioramaTree({ position, scale = 1 }: { position: Vec3; scale?: number }) {
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <mesh castShadow position={[0, 0.18, 0]}>
+        <cylinderGeometry args={[0.045, 0.065, 0.36, 8]} />
+        <meshStandardMaterial color="#7b5d3e" roughness={0.75} />
+      </mesh>
+      <mesh castShadow position={[0, 0.47, 0]}>
+        <sphereGeometry args={[0.18, 10, 10]} />
+        <meshStandardMaterial color="#3f8f5e" roughness={0.72} />
+      </mesh>
+      <mesh castShadow position={[0.09, 0.58, -0.04]}>
+        <sphereGeometry args={[0.13, 10, 10]} />
+        <meshStandardMaterial color="#2f7d5c" roughness={0.72} />
+      </mesh>
+    </group>
+  );
+}
+
+function DioramaBuilding({
+  active,
+  color,
+  label,
+  module,
+  onSelectModule,
+  position,
+  scale
+}: {
+  active?: boolean;
+  color: string;
+  label: string;
+  module?: ModuleId;
+  onSelectModule: (module: ModuleId) => void;
+  position: Vec3;
+  scale: Vec3;
+}) {
+  const handleClick = (event: ThreeEvent<PointerEvent>) => {
+    if (!module) return;
+    event.stopPropagation();
+    onSelectModule(module);
+  };
+
+  return (
+    <group onClick={handleClick} position={position}>
+      <mesh castShadow receiveShadow scale={scale}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={color} emissive={active ? "#7e1420" : "#000000"} emissiveIntensity={active ? 0.12 : 0} roughness={0.68} />
+      </mesh>
+      <mesh castShadow position={[0, scale[1] * 0.54, 0]} scale={[scale[0] * 1.08, 0.08, scale[2] * 1.05]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#f6f3e8" roughness={0.7} />
+      </mesh>
+      {[-0.22, 0, 0.22].map((x) => (
+        <mesh key={x} position={[x * scale[0], 0.08, scale[2] * 0.51]} scale={[0.08, 0.1, 0.012]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color="#dbe9e6" roughness={0.35} />
+        </mesh>
+      ))}
+      <Text anchorX="center" anchorY="middle" color="#223029" fontSize={0.12} maxWidth={scale[0] * 0.9} position={[0, scale[1] + 0.16, scale[2] * 0.52]}>
+        {label}
+      </Text>
+    </group>
+  );
+}
+
+function DistrictDiorama({ activeModule, onSelectModule }: { activeModule: ModuleId; onSelectModule: (module: ModuleId) => void }) {
+  return (
+    <group>
+      <mesh receiveShadow position={[0, -0.19, 0.35]} rotation={[0, Math.PI / 10, 0]} scale={[7.2, 0.16, 5.25]}>
+        <cylinderGeometry args={[1, 1, 1, 12]} />
+        <meshStandardMaterial color="#6f8f75" roughness={0.88} />
+      </mesh>
+      <mesh receiveShadow position={[0, -0.08, 3.88]} scale={[11.4, 0.035, 0.48]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#59625e" roughness={0.82} />
+      </mesh>
+      {[-2.8, -1.6, -0.4, 0.8, 2, 3.2].map((x) => (
+        <mesh key={x} position={[x, -0.055, 3.89]} scale={[0.36, 0.012, 0.05]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color="#f7f1d2" roughness={0.5} />
+        </mesh>
+      ))}
+      <DioramaBuilding color="#f4efe3" label="Mahalle" onSelectModule={onSelectModule} position={[-5.9, 0.36, -2.1]} scale={[0.7, 0.72, 0.62]} />
+      <DioramaBuilding color="#dceaf3" label="SGK" module="sgk" active={activeModule === "sgk"} onSelectModule={onSelectModule} position={[5.82, 0.42, -0.7]} scale={[0.72, 0.84, 0.62]} />
+      <DioramaBuilding color="#eadfca" label="Depo" module="depo" active={activeModule === "depo"} onSelectModule={onSelectModule} position={[-5.75, 0.32, 2.35]} scale={[0.78, 0.58, 0.7]} />
+      <DioramaBuilding color="#f7ecec" label="Hastane" onSelectModule={onSelectModule} position={[3.8, 0.36, -4.16]} scale={[0.82, 0.72, 0.58]} />
+      <DioramaTree position={[-4.7, 0, -3.55]} scale={0.9} />
+      <DioramaTree position={[4.72, 0, -3.45]} scale={0.82} />
+      <DioramaTree position={[-3.65, 0, 3.55]} scale={0.72} />
+      <DioramaTree position={[4.72, 0, 2.72]} scale={0.68} />
+      <DioramaTree position={[2.78, 0, 3.82]} scale={0.62} />
+    </group>
+  );
+}
+
 function StoreShell({
   activeModule,
   onSelectModule,
@@ -429,20 +524,21 @@ function StoreShell({
 
   return (
     <group>
+      <DistrictDiorama activeModule={activeModule} onSelectModule={onSelectModule} />
       <mesh receiveShadow position={[0, -0.02, 0]}>
         <boxGeometry args={[10.9, 0.04, 7.7]} />
-        <meshStandardMaterial color="#e4e6dc" roughness={0.84} />
+        <meshStandardMaterial color="#e7eadf" roughness={0.84} />
       </mesh>
-      <mesh receiveShadow position={[0, 1.42, -3.64]}>
-        <boxGeometry args={[10.9, 2.84, 0.16]} />
-        <meshStandardMaterial color="#f8f7ef" roughness={0.72} />
+      <mesh receiveShadow position={[0, 1.12, -3.64]}>
+        <boxGeometry args={[10.9, 2.24, 0.16]} />
+        <meshStandardMaterial color="#fbf8ed" roughness={0.72} />
       </mesh>
-      <mesh receiveShadow position={[-5.38, 1.16, 0]}>
-        <boxGeometry args={[0.16, 2.32, 7.7]} />
+      <mesh receiveShadow position={[-5.38, 0.92, 0]}>
+        <boxGeometry args={[0.16, 1.84, 7.7]} />
         <meshStandardMaterial color="#ece6dd" roughness={0.78} />
       </mesh>
-      <mesh receiveShadow position={[5.38, 1.16, -1.02]}>
-        <boxGeometry args={[0.16, 2.32, 5.25]} />
+      <mesh receiveShadow position={[5.38, 0.92, -1.02]}>
+        <boxGeometry args={[0.16, 1.84, 5.25]} />
         <meshStandardMaterial color="#eef2ec" roughness={0.78} />
       </mesh>
       <mesh position={[0, 2.48, -3.48]} scale={[3.05, 0.38, 0.12]}>
@@ -499,6 +595,7 @@ function PharmacyScene({
       <ambientLight intensity={lighting.ambient} />
       <directionalLight castShadow intensity={lighting.key} position={[4.5, 8, 5.5]} shadow-mapSize={[1024, 1024]} />
       <pointLight color="#e51823" intensity={1.3} position={[0, 2.72, -2.4]} />
+      <pointLight color="#f4d36f" intensity={0.75} position={[-4.6, 1.3, 3.6]} />
       <StoreShell activeModule={activeModule} onSelectModule={onSelectModule} state={state} />
       {!setupLocked && <CustomerQueue state={state} />}
       {staff.map((person, index) => (
@@ -514,11 +611,11 @@ function PharmacyScene({
       <OrbitControls
         enableDamping
         enablePan={false}
-        maxDistance={8.8}
+        maxDistance={10.5}
         maxPolarAngle={Math.PI / 2.45}
-        minDistance={5.2}
+        minDistance={6.1}
         minPolarAngle={Math.PI / 5}
-        target={[-0.22, 0.88, -0.62]}
+        target={[-0.12, 0.78, -0.25]}
       />
     </>
   );
@@ -531,7 +628,7 @@ export function PharmacyWorld3D({ activeModule, onSelectModule, setupLocked, sta
 
   return (
     <section className="pharmacy-world">
-      <Canvas camera={{ fov: 37, position: [5.5, 4.7, 6.05] }} dpr={[1, 1.7]} shadows>
+      <Canvas camera={{ fov: 40, position: [6.6, 5.35, 7.15] }} dpr={[1, 1.7]} shadows>
         <Suspense fallback={null}>
           <PharmacyScene activeModule={activeModule} onSelectModule={onSelectModule} setupLocked={setupLocked} state={state} />
         </Suspense>
