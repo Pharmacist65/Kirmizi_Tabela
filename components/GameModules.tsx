@@ -18,6 +18,7 @@ import {
   purchasePaymentLabels,
   shelfFocusLabels
 } from "@/game/engine";
+import { getShelfProducts, productLabelModeText } from "@/data/retailProducts";
 import type { GameState, LedgerEntry, PurchasePayment, ShelfFocus } from "@/game/types";
 
 export type ModuleId = "eczane" | "depo" | "stok" | "sgk" | "personel" | "finans" | "pazar";
@@ -117,6 +118,14 @@ export function GameModules({
                     Stok {item.stock}/{item.capacity} · Talep {item.demand}/gün
                   </span>
                 </div>
+                <div className="product-chip-row">
+                  {getShelfProducts(item.id).slice(0, 5).map((product) => (
+                    <span key={product.id} style={{ borderColor: product.color }}>
+                      {product.label}
+                      <em>{productLabelModeText[product.labelMode]}</em>
+                    </span>
+                  ))}
+                </div>
                 <div className="stock-meter">
                   <i style={{ width: `${stockRatio(item.stock, item.capacity)}%` }} />
                 </div>
@@ -174,6 +183,12 @@ export function GameModules({
               <span>{item.stock}/{item.capacity}</span>
               <span>Miat riski {item.expiryRisk}</span>
               <span>Satış {formatMoney(item.sellPrice)}</span>
+              <small>
+                {getShelfProducts(item.id)
+                  .slice(0, 4)
+                  .map((product) => product.label)
+                  .join(" · ")}
+              </small>
             </div>
           ))}
         </div>

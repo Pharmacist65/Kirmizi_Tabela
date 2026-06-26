@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   BatteryMedium,
-  CalendarDays,
+  Boxes,
   ClipboardList,
   Landmark,
   MapPinned,
+  Play,
   RotateCcw,
   ShieldAlert,
   Store,
+  UsersRound,
   Truck,
   WalletCards
 } from "lucide-react";
@@ -19,16 +22,10 @@ import { DailyActionPanel } from "@/components/DailyActionPanel";
 import { DayReportPanel } from "@/components/DayReportPanel";
 import { FeedbackDock } from "@/components/FeedbackDock";
 import { Leaderboard } from "@/components/Leaderboard";
-import { LivePharmacyScene } from "@/components/LivePharmacyScene";
 import { LocationProfile } from "@/components/LocationProfile";
-import { OperationsBoard } from "@/components/OperationsBoard";
 import { OpeningTasks } from "@/components/OpeningTasks";
 import { PlayGuide } from "@/components/PlayGuide";
-import { ReportPanel } from "@/components/ReportPanel";
-import { SeasonTrack } from "@/components/SeasonTrack";
-import { ScenarioStatus } from "@/components/ScenarioStatus";
 import { StartScreen } from "@/components/StartScreen";
-import { StatCard } from "@/components/StatCard";
 import {
   advanceTradingDay,
   applyDailyAction,
@@ -54,6 +51,31 @@ import { isFirebaseConfigured } from "@/firebase/config";
 
 const legacyStorageKey = "kirmizi-tabela-v4-state";
 const storageKey = "kirmizi-tabela-v5-save";
+
+const PharmacyWorld3D = dynamic(
+  () => import("@/components/PharmacyWorld3D").then((module) => module.PharmacyWorld3D),
+  {
+    ssr: false,
+    loading: () => (
+      <section className="pharmacy-world is-loading">
+        <div className="world-loader">
+          <span>ECZANE</span>
+          <strong>3D sahne hazırlanıyor</strong>
+        </div>
+      </section>
+    )
+  }
+);
+
+const moduleItems: { id: ModuleId; label: string }[] = [
+  { id: "eczane", label: "Eczane" },
+  { id: "depo", label: "Depo" },
+  { id: "stok", label: "Raf/Stok" },
+  { id: "sgk", label: "SGK" },
+  { id: "personel", label: "Personel" },
+  { id: "finans", label: "Finans" },
+  { id: "pazar", label: "Pazar" }
+];
 
 type SavedGame = {
   version: 5;
@@ -260,150 +282,183 @@ export default function Home() {
     return <StartScreen onStart={startScenario} />;
   }
 
+  const selectModule = (module: ModuleId) => {
+    if (setupLocked && module !== "eczane") {
+      blockIfSetupLocked();
+      return;
+    }
+    setActiveModule(module);
+  };
+
   return (
     <>
-      <div className="app-shell">
-        <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">
-            <Store size={25} aria-hidden="true" />
-          </div>
-          <div>
-            <h1>Kırmızı Tabela</h1>
-            <p>{state.pharmacistName}</p>
-          </div>
-        </div>
+      <div className="game-shell-3d">
+        <PharmacyWorld3D
+          activeModule={activeModule}
+          onSelectModule={selectModule}
+          setupLocked={setupLocked}
+          state={state}
+        />
 
-        <section className="sidebar-section">
-          <h2>Aktif Senaryo</h2>
-          <div className="scenario-tile">
-            <strong>{state.scenarioName}</strong>
+        <header className="world-topbar">
+          <div className="world-brand">
+            <div className="brand-mark">
+              <Store size={24} aria-hidden="true" />
+            </div>
+            <div>
+              <h1>Kırmızı Tabela</h1>
+              <p>
+                {state.pharmacyName} · {state.city}/{state.district}
+              </p>
+            </div>
+          </div>
+
+          <div className="world-metrics" aria-label="Oyun göstergeleri">
             <span>
-              {state.pharmacyName} · {state.city}/{state.district}.{" "}
-              {setupLocked ? "Açılış hazırlığı sürüyor; günlük satış henüz kilitli." : "Günlük oyun açık."}
+              <WalletCards size={16} aria-hidden="true" />
+              Kasa <b>{formatMoney(state.cash)}</b>
+            </span>
+            <span>
+              <Truck size={16} aria-hidden="true" />
+              Depo <b>{formatMoney(state.debt)}</b>
+            </span>
+            <span>
+              <Landmark size={16} aria-hidden="true" />
+              SGK <b>{formatMoney(state.sgkReceivable)}</b>
+            </span>
+            <span>
+              <BatteryMedium size={16} aria-hidden="true" />
+              Enerji <b>{Math.round(state.energy)}</b>
             </span>
           </div>
-        </section>
 
-        <LocationProfile state={state} />
-
-        <section className="sidebar-section">
-          <h2>Demo Durumu</h2>
-          <div className="scenario-tile">
-            <strong>{isFirebaseConfigured ? "Firebase hazır" : "Yerel demo modu"}</strong>
-            <span>
-              Firebase ayarları sonradan bağlanacak. Bu prototip ilerlemeyi tarayıcıda saklar.
-            </span>
-          </div>
-        </section>
-
-        <button className="ghost-button" onClick={resetGame}>
-          <RotateCcw size={18} aria-hidden="true" />
-          Senaryoyu sıfırla
-        </button>
-        <button className="ghost-button" onClick={pickNewScenario}>
-          <MapPinned size={18} aria-hidden="true" />
-          Yeni senaryo seç
-        </button>
-        <section className="module-nav">
-          {[
-            ["eczane", "Eczane"],
-            ["depo", "Depo"],
-            ["stok", "Raf/Stok"],
-            ["sgk", "SGK"],
-            ["personel", "Personeller"],
-            ["finans", "Finans"],
-            ["pazar", "Eczacı Pazarı"]
-          ].map(([id, label]) => (
-            <button
-              className={`${activeModule === id ? "active" : ""} ${setupLocked && id !== "eczane" ? "locked" : ""}`}
-              disabled={setupLocked && id !== "eczane"}
-              key={id}
-              onClick={() => setActiveModule(id as ModuleId)}
-            >
-              <ClipboardList size={16} aria-hidden="true" />
-              {label}
+          <div className="world-top-actions">
+            <button className="ghost-button compact" onClick={pickNewScenario}>
+              <MapPinned size={17} aria-hidden="true" />
+              Senaryo
             </button>
-          ))}
-        </section>
-      </aside>
-
-      <main className="main">
-        <header className="topbar">
-          <div>
-            <h2>{state.pharmacyName}</h2>
-            <p>
-              {state.locationName}. Ay {state.month}, gün {state.currentDay}. Bugünkü karar kasayı, güveni ve
-              enerjiyi birlikte etkileyecek.
-            </p>
-          </div>
-          <div className="top-actions">
-            <button className="icon-button" title="Takvim">
-              <CalendarDays size={19} aria-hidden="true" />
-            </button>
-            <button className="primary-button" disabled={setupLocked} onClick={advanceDay}>
+            <button className="primary-button compact" disabled={setupLocked} onClick={advanceDay}>
+              <Play size={17} aria-hidden="true" />
               {setupLocked ? "Açılış kilitli" : "Günü oynat"}
             </button>
           </div>
         </header>
 
-        <section className="stat-grid">
-          <StatCard label="Kasa" value={formatMoney(state.cash)} detail="Elden satış ve tahsilat sonrası" icon={WalletCards} />
-          <StatCard label="Depo borcu" value={formatMoney(state.debt)} detail="Vade baskısı ve güven ilişkisi" icon={Truck} />
-          <StatCard label="POS alacağı" value={formatMoney(state.posReceivable)} detail="Ertesi gün/blokeli tahsilatlar" icon={WalletCards} />
-          <StatCard label="SGK alacağı" value={formatMoney(state.sgkReceivable)} detail="Bekleyen geri ödeme havuzu" icon={Landmark} />
-          <StatCard label="Enerji" value={`${Math.round(state.energy)}/100`} detail="Düşerse hata ve tartışma riski artar" icon={BatteryMedium} />
-          <StatCard label="Uyum riski" value={`${Math.round(state.complianceRisk)}/100`} detail="Dikkat, evrak ve süreç hassasiyeti" icon={ShieldAlert} />
-        </section>
+        <aside className="world-side world-side-left">
+          <section className="world-panel">
+            <div className="world-panel-head">
+              <span>{state.pharmacistName}</span>
+              <strong>{state.scenarioName}</strong>
+            </div>
+            <p>
+              {setupLocked
+                ? "Sıfırdan açılışta raf, POS, SGK, oda ve depo kurulumları tamamlanmadan satış başlamaz."
+                : `${state.timeLabel}. Bugünün akışı raf, personel ve vade kararlarına göre değişiyor.`}
+            </p>
+          </section>
 
-        <section className="tycoon-board">
-          <div className="play-column">
-            <LivePharmacyScene state={state} />
-            <DailyActionPanel state={state} locked={setupLocked} onAction={dailyAction} />
-            {setupLocked ? (
-              <OpeningTasks
-                state={state}
-                setState={setState}
-                tasks={openingTasks}
-                setTasks={setOpeningTasks}
-                setActionResult={setActionResult}
-              />
-            ) : (
-              <GameModules
-                activeModule={activeModule}
-                state={state}
-                onBuyInventory={buyStock}
-                onAdvanceDay={advanceDay}
-                onShelfFocus={(focus) => performAction("Raf odağı değişti", "Satış dağılımı bir sonraki gün bu odağa göre değişecek.", (current) => changeShelfFocus(current, focus))}
-                onAssignStaff={assignTask}
-                onHireStaff={hire}
-                onFireStaff={fire}
-                onRaiseStaff={raise}
-                onSgkControl={sgkControl}
-                onChamberApproval={chamberApproval}
-                onMarketplaceBuy={marketplaceBuy}
-                onMarketplaceSell={marketplaceSell}
-                onPayDebt={payDebt}
-              />
-            )}
+          <LocationProfile state={state} />
+
+          <section className="world-panel world-system-panel">
+            <div>
+              <span>Demo Durumu</span>
+              <strong>{isFirebaseConfigured ? "Firebase bağlı" : "Yerel kayıt"}</strong>
+            </div>
+            <div>
+              <span>Uyum riski</span>
+              <strong>{Math.round(state.complianceRisk)}/100</strong>
+            </div>
+            <div>
+              <span>Personel morali</span>
+              <strong>{Math.round(state.staffMorale)}/100</strong>
+            </div>
+          </section>
+
+          <div className="world-side-actions">
+            <button className="ghost-button" onClick={resetGame}>
+              <RotateCcw size={18} aria-hidden="true" />
+              Senaryoyu sıfırla
+            </button>
+            <button className="ghost-button" onClick={pickNewScenario}>
+              <MapPinned size={18} aria-hidden="true" />
+              Yeni senaryo seç
+            </button>
           </div>
-          <div className="right-game-rail">
+        </aside>
+
+        <aside className="world-side world-side-right">
+          <nav className="world-module-dock" aria-label="Oyun modülleri">
+            {moduleItems.map(({ id, label }) => (
+            <button
+              className={`${activeModule === id ? "active" : ""} ${setupLocked && id !== "eczane" ? "locked" : ""}`}
+              disabled={setupLocked && id !== "eczane"}
+              key={id}
+              onClick={() => selectModule(id)}
+            >
+              <ClipboardList size={16} aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+          </nav>
+
+          <section className="world-module-panel">
+            {setupLocked ? (
+                <OpeningTasks
+                  state={state}
+                  setState={setState}
+                  tasks={openingTasks}
+                  setTasks={setOpeningTasks}
+                  setActionResult={setActionResult}
+                />
+              ) : (
+                <GameModules
+                  activeModule={activeModule}
+                  state={state}
+                  onBuyInventory={buyStock}
+                  onAdvanceDay={advanceDay}
+                  onShelfFocus={(focus) => performAction("Raf odağı değişti", "Satış dağılımı bir sonraki gün bu odağa göre değişecek.", (current) => changeShelfFocus(current, focus))}
+                  onAssignStaff={assignTask}
+                  onHireStaff={hire}
+                  onFireStaff={fire}
+                  onRaiseStaff={raise}
+                  onSgkControl={sgkControl}
+                  onChamberApproval={chamberApproval}
+                  onMarketplaceBuy={marketplaceBuy}
+                  onMarketplaceSell={marketplaceSell}
+                  onPayDebt={payDebt}
+                />
+              )}
+          </section>
+        </aside>
+
+        <section className="world-bottom-strip">
+          <div className="world-result-stack">
             <ActionResultPanel result={actionResult} />
             <DayReportPanel report={state.lastDayReport} />
+          </div>
+          <div className="world-action-stack">
+            <DailyActionPanel state={state} locked={setupLocked} onAction={dailyAction} />
+          </div>
+          <div className="world-intel-stack">
             <PlayGuide state={state} />
             <Leaderboard state={state} />
           </div>
         </section>
 
-        {!setupLocked && (
-          <>
-            <ScenarioStatus state={state} />
-            <OperationsBoard state={state} />
-            <SeasonTrack state={state} />
-            <ReportPanel state={state} />
-          </>
-        )}
-        </main>
+        <div className="world-status-ribbon">
+          <span>
+            <Boxes size={15} aria-hidden="true" />
+            Stok sağlığı {Math.round(state.stockHealth)}/100
+          </span>
+          <span>
+            <UsersRound size={15} aria-hidden="true" />
+            Memnuniyet {Math.round(state.satisfaction)}/100
+          </span>
+          <span>
+            <ShieldAlert size={15} aria-hidden="true" />
+            SGK uyum riski {Math.round(state.complianceRisk)}/100
+          </span>
+        </div>
       </div>
       <FeedbackDock state={state} />
     </>
