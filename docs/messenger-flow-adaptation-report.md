@@ -94,3 +94,19 @@ Bir sonraki mantıklı adım:
 - Açılış görevlerinde alternatif karar dalları.
 - Skor ve lig ekranını ayrı sonuç töreni haline getirmek.
 - Gerçek GLTF/texture asset pipeline kurmak.
+
+## Lokasyon Dioraması Revizyonu
+
+Eczane artık tek başına yüzen bir oda gibi kalmamalı. Senaryo seçimi sahnenin çevresini değiştirmeli:
+
+- Mahalle: apartman, aile sağlığı merkezi, pastane, yol ve ağaçlar.
+- Hastane: büyük hastane bloğu, poliklinik, taksi/yol yoğunluğu, yakın SGK teslim odağı.
+- Cadde: banka, dermo mağazası, kafe ve daha geniş cadde akışı.
+- AVM: AVM bloğu, otopark, plaza ve mal kabul deposu.
+- Kırsal: ilçe meydanı, ASM, tarla ve uzak depo vurgusu.
+- Turistik: otel, sahil/su alanı, sezon pazarı ve sezon deposu.
+- Üniversite/Sanayi: kampüs veya sanayi bağlamı, buna göre müşteri akışı.
+
+SGK binası eczane içinde durmayacak; dış dünyada ayrı bir resmi kurum landmark'ı olacak ve tıklanınca SGK modülünü açacak. Eczane içindeki SGK noktası sadece dosya/işlem masası olarak kalacak.
+
+Depo da ayrı bir landmark olacak; sokak/tedarik hattında "Ecza Deposu", "Nöbetçi Depo", "AVM Mal Kabul" veya "Uzak Depo" gibi senaryo diline göre değişecek. Depo motoru bu landmark'ın yanında konumlanacak.

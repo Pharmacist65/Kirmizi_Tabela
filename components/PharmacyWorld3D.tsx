@@ -7,7 +7,7 @@ import type { Group } from "three";
 import { getShelfProducts } from "@/data/retailProducts";
 import { roleLabels, staffTasks } from "@/data/staff";
 import type { ModuleId } from "@/components/GameModules";
-import type { DayPhase, GameState, InventoryCategory, StaffRole } from "@/game/types";
+import type { DayPhase, GameState, InventoryCategory, LocationType, StaffRole } from "@/game/types";
 
 type PharmacyWorld3DProps = {
   state: GameState;
@@ -49,6 +49,176 @@ const staffUniformColors: Record<StaffRole, string> = {
   dermo: "#8a6a46",
   cashier: "#6f5b94",
   stock: "#5e765f"
+};
+
+type DioramaLandmark = {
+  color: string;
+  label: string;
+  position: Vec3;
+  scale: Vec3;
+  module?: ModuleId;
+};
+
+type DioramaPreset = {
+  groundColor: string;
+  roadColor: string;
+  roadPosition: Vec3;
+  roadScale: Vec3;
+  roadRotation?: Vec3;
+  sgk: DioramaLandmark;
+  depot: DioramaLandmark;
+  context: DioramaLandmark[];
+  trees: { position: Vec3; scale?: number }[];
+  water?: { position: Vec3; scale: Vec3; color: string };
+};
+
+const dioramaPresets: Record<LocationType, DioramaPreset> = {
+  neighborhood: {
+    groundColor: "#6f8f75",
+    roadColor: "#59625e",
+    roadPosition: [-1.8, -0.08, 4.08],
+    roadScale: [11.6, 0.035, 0.48],
+    sgk: { color: "#dceaf3", label: "SGK Kurumu", module: "sgk", position: [6.25, 0.48, -2.9], scale: [0.82, 0.96, 0.64] },
+    depot: { color: "#eadfca", label: "Ecza Deposu", module: "depo", position: [-6.18, 0.36, 2.52], scale: [0.9, 0.68, 0.78] },
+    context: [
+      { color: "#f4efe3", label: "Apartman", position: [-6.08, 0.46, -2.4], scale: [0.72, 0.92, 0.62] },
+      { color: "#ecf3e8", label: "Aile Sağlığı", position: [3.95, 0.38, -4.18], scale: [0.82, 0.76, 0.58] },
+      { color: "#f8e8dd", label: "Pastane", position: [-3.8, 0.32, 4.55], scale: [0.62, 0.54, 0.5] }
+    ],
+    trees: [
+      { position: [-4.7, 0, -3.55], scale: 0.9 },
+      { position: [4.72, 0, -3.45], scale: 0.82 },
+      { position: [-3.65, 0, 3.55], scale: 0.72 },
+      { position: [4.72, 0, 2.72], scale: 0.68 }
+    ]
+  },
+  hospital: {
+    groundColor: "#76877d",
+    roadColor: "#4f5855",
+    roadPosition: [-0.2, -0.08, 4.16],
+    roadScale: [12.6, 0.035, 0.62],
+    sgk: { color: "#dceaf3", label: "SGK Teslim", module: "sgk", position: [5.95, 0.5, -2.86], scale: [0.86, 1.0, 0.64] },
+    depot: { color: "#e6d4bd", label: "Nöbetçi Depo", module: "depo", position: [-6.2, 0.38, 2.75], scale: [0.92, 0.72, 0.82] },
+    context: [
+      { color: "#f7ecec", label: "Hastane", position: [3.55, 0.62, -4.38], scale: [1.28, 1.24, 0.72] },
+      { color: "#e6edf2", label: "Poliklinik", position: [-5.84, 0.48, -2.92], scale: [0.82, 0.96, 0.58] },
+      { color: "#fff4dd", label: "Taksi", position: [-4.4, 0.2, 4.52], scale: [0.52, 0.22, 0.32] }
+    ],
+    trees: [
+      { position: [-4.65, 0, -3.7], scale: 0.62 },
+      { position: [5.0, 0, -3.75], scale: 0.58 },
+      { position: [4.88, 0, 2.84], scale: 0.52 }
+    ]
+  },
+  avenue: {
+    groundColor: "#82907f",
+    roadColor: "#424a48",
+    roadPosition: [-0.4, -0.08, 4.18],
+    roadScale: [13.0, 0.035, 0.7],
+    sgk: { color: "#dceaf3", label: "SGK Ofisi", module: "sgk", position: [6.14, 0.44, -2.55], scale: [0.78, 0.88, 0.58] },
+    depot: { color: "#eadfca", label: "Şehir Deposu", module: "depo", position: [-6.2, 0.38, 2.8], scale: [0.92, 0.72, 0.82] },
+    context: [
+      { color: "#f9e8ee", label: "Dermo Mağaza", position: [4.2, 0.42, -4.25], scale: [0.92, 0.84, 0.56] },
+      { color: "#e9edf5", label: "Banka", position: [-5.92, 0.42, -2.55], scale: [0.8, 0.84, 0.58] },
+      { color: "#f3eddd", label: "Kafe", position: [-3.55, 0.28, 4.6], scale: [0.68, 0.48, 0.46] }
+    ],
+    trees: [
+      { position: [-4.6, 0, -3.6], scale: 0.58 },
+      { position: [-2.8, 0, 4.56], scale: 0.46 },
+      { position: [2.4, 0, 4.52], scale: 0.46 },
+      { position: [4.8, 0, 2.65], scale: 0.5 }
+    ]
+  },
+  mall: {
+    groundColor: "#858b88",
+    roadColor: "#525b58",
+    roadPosition: [-0.1, -0.08, 4.22],
+    roadScale: [12.4, 0.035, 0.82],
+    sgk: { color: "#dceaf3", label: "SGK Ofisi", module: "sgk", position: [6.1, 0.42, -2.72], scale: [0.78, 0.84, 0.58] },
+    depot: { color: "#e5dccb", label: "AVM Mal Kabul", module: "depo", position: [-6.14, 0.36, 2.78], scale: [0.98, 0.68, 0.78] },
+    context: [
+      { color: "#e9edf2", label: "AVM", position: [3.62, 0.64, -4.34], scale: [1.38, 1.28, 0.74] },
+      { color: "#f6f2e8", label: "Otopark", position: [-5.92, 0.24, -2.7], scale: [1.0, 0.48, 0.62] },
+      { color: "#f7e6ea", label: "Plaza", position: [-3.9, 0.48, 4.6], scale: [0.72, 0.96, 0.48] }
+    ],
+    trees: [
+      { position: [5.0, 0, 2.72], scale: 0.5 },
+      { position: [-4.86, 0, 3.62], scale: 0.48 }
+    ]
+  },
+  rural: {
+    groundColor: "#7e9b66",
+    roadColor: "#746b58",
+    roadPosition: [-1.2, -0.08, 4.05],
+    roadScale: [10.8, 0.035, 0.38],
+    sgk: { color: "#dceaf3", label: "İlçe SGK", module: "sgk", position: [5.72, 0.4, -2.9], scale: [0.7, 0.8, 0.56] },
+    depot: { color: "#d9c8a7", label: "Uzak Depo", module: "depo", position: [-6.05, 0.32, 2.52], scale: [0.82, 0.58, 0.68] },
+    context: [
+      { color: "#f2ead9", label: "İlçe Meydanı", position: [-5.72, 0.32, -2.5], scale: [0.76, 0.64, 0.58] },
+      { color: "#e8f0dc", label: "ASM", position: [3.88, 0.32, -4.1], scale: [0.7, 0.64, 0.52] },
+      { color: "#d5b875", label: "Tarla", position: [-3.8, 0.12, 4.5], scale: [0.9, 0.18, 0.56] }
+    ],
+    trees: [
+      { position: [-4.8, 0, -3.5], scale: 1.05 },
+      { position: [4.9, 0, -3.5], scale: 1.0 },
+      { position: [-2.8, 0, 3.6], scale: 0.9 },
+      { position: [3.1, 0, 3.68], scale: 0.82 }
+    ]
+  },
+  touristic: {
+    groundColor: "#85a982",
+    roadColor: "#5c625c",
+    roadPosition: [-0.8, -0.08, 4.08],
+    roadScale: [11.2, 0.035, 0.46],
+    sgk: { color: "#dceaf3", label: "SGK Noktası", module: "sgk", position: [5.9, 0.4, -2.88], scale: [0.74, 0.8, 0.56] },
+    depot: { color: "#eadfca", label: "Sezon Deposu", module: "depo", position: [-6.06, 0.34, 2.62], scale: [0.86, 0.64, 0.72] },
+    context: [
+      { color: "#f7efe5", label: "Otel", position: [3.8, 0.52, -4.28], scale: [1.0, 1.04, 0.62] },
+      { color: "#fff0c8", label: "Sahil", position: [-5.72, 0.22, -2.55], scale: [0.92, 0.42, 0.58] },
+      { color: "#f5e6e2", label: "Pazar", position: [-3.75, 0.26, 4.54], scale: [0.72, 0.44, 0.46] }
+    ],
+    trees: [
+      { position: [-4.8, 0, -3.48], scale: 0.75 },
+      { position: [4.86, 0, -3.55], scale: 0.68 },
+      { position: [3.2, 0, 3.68], scale: 0.62 }
+    ],
+    water: { position: [6.2, -0.16, 1.55], scale: [1.85, 0.04, 2.5], color: "#69c6cb" }
+  },
+  university: {
+    groundColor: "#79927c",
+    roadColor: "#53605b",
+    roadPosition: [-0.7, -0.08, 4.08],
+    roadScale: [11.6, 0.035, 0.5],
+    sgk: { color: "#dceaf3", label: "SGK Ofisi", module: "sgk", position: [5.96, 0.42, -2.74], scale: [0.74, 0.84, 0.56] },
+    depot: { color: "#eadfca", label: "Şehir Deposu", module: "depo", position: [-6.08, 0.36, 2.72], scale: [0.86, 0.68, 0.72] },
+    context: [
+      { color: "#e8edf7", label: "Kampüs", position: [3.72, 0.52, -4.26], scale: [1.0, 1.04, 0.62] },
+      { color: "#f6eee1", label: "Yurt", position: [-5.84, 0.46, -2.55], scale: [0.74, 0.92, 0.58] },
+      { color: "#f7e7dd", label: "Kafe", position: [-3.75, 0.28, 4.58], scale: [0.68, 0.48, 0.44] }
+    ],
+    trees: [
+      { position: [-4.8, 0, -3.52], scale: 0.86 },
+      { position: [4.82, 0, -3.58], scale: 0.8 },
+      { position: [3.2, 0, 3.72], scale: 0.72 }
+    ]
+  },
+  industrial: {
+    groundColor: "#788176",
+    roadColor: "#454f4b",
+    roadPosition: [-0.4, -0.08, 4.18],
+    roadScale: [12.6, 0.035, 0.62],
+    sgk: { color: "#dceaf3", label: "SGK Ofisi", module: "sgk", position: [6.0, 0.42, -2.78], scale: [0.74, 0.84, 0.58] },
+    depot: { color: "#d6c5ac", label: "Sanayi Deposu", module: "depo", position: [-6.12, 0.38, 2.78], scale: [0.96, 0.72, 0.82] },
+    context: [
+      { color: "#d7ddd9", label: "Sanayi", position: [3.82, 0.48, -4.2], scale: [1.05, 0.96, 0.62] },
+      { color: "#ece4d8", label: "İş Merkezi", position: [-5.9, 0.46, -2.65], scale: [0.8, 0.92, 0.58] },
+      { color: "#f0dfce", label: "Lokanta", position: [-3.62, 0.28, 4.58], scale: [0.7, 0.48, 0.44] }
+    ],
+    trees: [
+      { position: [4.86, 0, 2.7], scale: 0.52 },
+      { position: [-4.72, 0, -3.5], scale: 0.54 }
+    ]
+  }
 };
 
 function taskZone(taskId?: string) {
@@ -388,14 +558,22 @@ function CustomerQueue({ state }: { state: GameState }) {
   );
 }
 
-function DeliveryScooter({ activeModule, onSelectModule }: { activeModule: ModuleId; onSelectModule: (module: ModuleId) => void }) {
+function DeliveryScooter({
+  activeModule,
+  onSelectModule,
+  position = [-5.05, 0, 3.14]
+}: {
+  activeModule: ModuleId;
+  onSelectModule: (module: ModuleId) => void;
+  position?: Vec3;
+}) {
   const handleClick = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
     onSelectModule("depo");
   };
 
   return (
-    <group onClick={handleClick} position={[-5.05, 0, 3.14]} rotation={[0, 0.18, 0]}>
+    <group onClick={handleClick} position={position} rotation={[0, 0.18, 0]}>
       <mesh castShadow position={[0, 0.25, 0]} scale={[0.58, 0.24, 0.24]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={activeModule === "depo" ? "#b21f2d" : "#ded7c7"} roughness={0.58} />
@@ -480,32 +658,76 @@ function DioramaBuilding({
   );
 }
 
-function DistrictDiorama({ activeModule, onSelectModule }: { activeModule: ModuleId; onSelectModule: (module: ModuleId) => void }) {
+function DistrictDiorama({
+  activeModule,
+  locationType,
+  onSelectModule
+}: {
+  activeModule: ModuleId;
+  locationType: LocationType;
+  onSelectModule: (module: ModuleId) => void;
+}) {
+  const preset = dioramaPresets[locationType] ?? dioramaPresets.neighborhood;
+  const roadMarks = [-3.8, -2.4, -1, 0.4, 1.8, 3.2];
+  const visibleDepot = { ...preset.depot, position: [-2.55, 0.36, 2.92] as Vec3 };
+  const visibleSgk = { ...preset.sgk, position: [3.55, 0.44, 2.42] as Vec3 };
+  const scooterPosition: Vec3 = [visibleDepot.position[0] + 0.66, 0, visibleDepot.position[2] - 0.28];
+
   return (
     <group>
       <mesh receiveShadow position={[0, -0.19, 0.35]} rotation={[0, Math.PI / 10, 0]} scale={[7.2, 0.16, 5.25]}>
         <cylinderGeometry args={[1, 1, 1, 12]} />
-        <meshStandardMaterial color="#6f8f75" roughness={0.88} />
+        <meshStandardMaterial color={preset.groundColor} roughness={0.88} />
       </mesh>
-      <mesh receiveShadow position={[0, -0.08, 3.88]} scale={[11.4, 0.035, 0.48]}>
+      {preset.water && (
+        <mesh receiveShadow position={preset.water.position} scale={preset.water.scale}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color={preset.water.color} roughness={0.48} transparent opacity={0.82} />
+        </mesh>
+      )}
+      <mesh receiveShadow position={preset.roadPosition} rotation={preset.roadRotation ?? [0, 0, 0]} scale={preset.roadScale}>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#59625e" roughness={0.82} />
+        <meshStandardMaterial color={preset.roadColor} roughness={0.82} />
       </mesh>
-      {[-2.8, -1.6, -0.4, 0.8, 2, 3.2].map((x) => (
-        <mesh key={x} position={[x, -0.055, 3.89]} scale={[0.36, 0.012, 0.05]}>
+      {roadMarks.map((x) => (
+        <mesh key={x} position={[preset.roadPosition[0] + x, -0.055, preset.roadPosition[2]]} scale={[0.36, 0.012, 0.05]}>
           <boxGeometry args={[1, 1, 1]} />
           <meshStandardMaterial color="#f7f1d2" roughness={0.5} />
         </mesh>
       ))}
-      <DioramaBuilding color="#f4efe3" label="Mahalle" onSelectModule={onSelectModule} position={[-5.9, 0.36, -2.1]} scale={[0.7, 0.72, 0.62]} />
-      <DioramaBuilding color="#dceaf3" label="SGK" module="sgk" active={activeModule === "sgk"} onSelectModule={onSelectModule} position={[5.82, 0.42, -0.7]} scale={[0.72, 0.84, 0.62]} />
-      <DioramaBuilding color="#eadfca" label="Depo" module="depo" active={activeModule === "depo"} onSelectModule={onSelectModule} position={[-5.75, 0.32, 2.35]} scale={[0.78, 0.58, 0.7]} />
-      <DioramaBuilding color="#f7ecec" label="Hastane" onSelectModule={onSelectModule} position={[3.8, 0.36, -4.16]} scale={[0.82, 0.72, 0.58]} />
-      <DioramaTree position={[-4.7, 0, -3.55]} scale={0.9} />
-      <DioramaTree position={[4.72, 0, -3.45]} scale={0.82} />
-      <DioramaTree position={[-3.65, 0, 3.55]} scale={0.72} />
-      <DioramaTree position={[4.72, 0, 2.72]} scale={0.68} />
-      <DioramaTree position={[2.78, 0, 3.82]} scale={0.62} />
+      <DioramaBuilding
+        active={activeModule === "sgk"}
+        color={visibleSgk.color}
+        label={visibleSgk.label}
+        module="sgk"
+        onSelectModule={onSelectModule}
+        position={visibleSgk.position}
+        scale={visibleSgk.scale}
+      />
+      <DioramaBuilding
+        active={activeModule === "depo"}
+        color={visibleDepot.color}
+        label={visibleDepot.label}
+        module="depo"
+        onSelectModule={onSelectModule}
+        position={visibleDepot.position}
+        scale={visibleDepot.scale}
+      />
+      {preset.context.map((item) => (
+        <DioramaBuilding
+          color={item.color}
+          key={item.label}
+          label={item.label}
+          module={item.module}
+          onSelectModule={onSelectModule}
+          position={item.position}
+          scale={item.scale}
+        />
+      ))}
+      {preset.trees.map((tree, index) => (
+        <DioramaTree key={`${tree.position.join("-")}-${index}`} position={tree.position} scale={tree.scale} />
+      ))}
+      <DeliveryScooter activeModule={activeModule} onSelectModule={onSelectModule} position={scooterPosition} />
     </group>
   );
 }
@@ -524,7 +746,7 @@ function StoreShell({
 
   return (
     <group>
-      <DistrictDiorama activeModule={activeModule} onSelectModule={onSelectModule} />
+      <DistrictDiorama activeModule={activeModule} locationType={state.locationType} onSelectModule={onSelectModule} />
       <mesh receiveShadow position={[0, -0.02, 0]}>
         <boxGeometry args={[10.9, 0.04, 7.7]} />
         <meshStandardMaterial color="#e7eadf" roughness={0.84} />
@@ -568,9 +790,8 @@ function StoreShell({
       <SelectableBox active={activeModule === "personel"} color="#f1d8d7" module="personel" onSelectModule={onSelectModule} position={[-2.25, 0.08, 0.9]} scale={[1.5, 0.05, 0.78]} />
       <ZoneLabel label="Raflar" position={[-2.22, 2.38, -2.72]} />
       <ZoneLabel label="Banko" position={[0.12, 1.42, 0.8]} />
-      <ZoneLabel label="SGK" position={[3.68, 1.24, -0.95]} />
+      <ZoneLabel label="SGK dosya" position={[3.68, 1.24, -0.95]} />
       <ZoneLabel label="Finans" position={[1.95, 1.05, 1.12]} />
-      <DeliveryScooter activeModule={activeModule} onSelectModule={onSelectModule} />
     </group>
   );
 }
