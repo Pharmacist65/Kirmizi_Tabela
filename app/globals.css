@@ -42,6 +42,67 @@ button {
   cursor: pointer;
 }
 
+.game-boot-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  background:
+    radial-gradient(circle at center, rgba(249, 247, 237, 0.92), rgba(128, 216, 207, 0.82) 48%, rgba(79, 92, 86, 0.82) 100%);
+  color: #1c2a23;
+  text-align: center;
+}
+
+.game-boot-loader strong {
+  font-size: 1.1rem;
+  font-weight: 950;
+}
+
+.game-boot-loader small {
+  color: #4c5c52;
+  font-weight: 850;
+}
+
+.game-boot-mark {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 24px 60px rgba(27, 41, 34, 0.22);
+}
+
+.game-boot-mark span {
+  --boot-rotation: calc(var(--frame) * 45deg);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 24px;
+  border-radius: 999px;
+  background: #b21f2d;
+  opacity: 0.18;
+  transform: translate(-50%, -50%) rotate(var(--boot-rotation)) translateY(-24px);
+  transform-origin: center;
+  animation: game-boot-frame 0.96s infinite ease-in-out;
+  animation-delay: calc(var(--frame) * 0.08s);
+}
+
+@keyframes game-boot-frame {
+  0%,
+  12% {
+    opacity: 1;
+  }
+
+  58%,
+  100% {
+    opacity: 0.18;
+  }
+}
+
 .reboot-game {
   position: relative;
   min-height: 100vh;

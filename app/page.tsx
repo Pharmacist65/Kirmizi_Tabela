@@ -1,5 +1,5 @@
-import { RebootGame } from "@/components/RebootGame";
+import { GameClient } from "@/components/GameClient";
 
 export default function Home() {
-  return <RebootGame />;
+  return <GameClient />;
 }
