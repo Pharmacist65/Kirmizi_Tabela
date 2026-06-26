@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import {
   BatteryMedium,
   Boxes,
@@ -24,6 +23,7 @@ import { FeedbackDock } from "@/components/FeedbackDock";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LocationProfile } from "@/components/LocationProfile";
 import { OpeningTasks } from "@/components/OpeningTasks";
+import { PharmacyWorldClient } from "@/components/PharmacyWorldClient";
 import { PlayGuide } from "@/components/PlayGuide";
 import { StartScreen } from "@/components/StartScreen";
 import {
@@ -51,21 +51,6 @@ import { isFirebaseConfigured } from "@/firebase/config";
 
 const legacyStorageKey = "kirmizi-tabela-v4-state";
 const storageKey = "kirmizi-tabela-v5-save";
-
-const PharmacyWorld3D = dynamic(
-  () => import("@/components/PharmacyWorld3D").then((module) => module.PharmacyWorld3D),
-  {
-    ssr: false,
-    loading: () => (
-      <section className="pharmacy-world is-loading">
-        <div className="world-loader">
-          <span>ECZANE</span>
-          <strong>3D sahne hazırlanıyor</strong>
-        </div>
-      </section>
-    )
-  }
-);
 
 const moduleItems: { id: ModuleId; label: string }[] = [
   { id: "eczane", label: "Eczane" },
@@ -98,7 +83,7 @@ export default function Home() {
   const [actionResult, setActionResult] = useState<ActionResult | null>(null);
   const [openingTasks, setOpeningTasks] = useState<TimedTask[]>(() => createOpeningTasks());
   const [activeModule, setActiveModule] = useState<ModuleId>("eczane");
-  const [hasGame, setHasGame] = useState(false);
+  const [hasGame, setHasGame] = useState(true);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -293,7 +278,7 @@ export default function Home() {
   return (
     <>
       <div className="game-shell-3d">
-        <PharmacyWorld3D
+        <PharmacyWorldClient
           activeModule={activeModule}
           onSelectModule={selectModule}
           setupLocked={setupLocked}

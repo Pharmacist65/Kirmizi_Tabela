@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { Building2, Landmark, MapPin, Store, TrendingUp, WalletCards } from "lucide-react";
 import { AnimatedPharmacySign } from "@/components/AnimatedPharmacySign";
 import { cityDistricts, getDistrictProfile, locationTypeLabels, locationTypeModifiers, locationTypeOptions } from "@/data/locations";
@@ -79,6 +80,11 @@ export function StartScreen({ onStart }: StartScreenProps) {
     });
   };
 
+  const submitStart = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    start();
+  };
+
   return (
     <main className="start-screen">
       <section className="start-hero">
@@ -107,7 +113,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
       </section>
 
       <section className="setup-grid">
-        <div className="setup-form-panel">
+        <form className="setup-form-panel" onSubmit={submitStart}>
           <div className="scenario-heading">
             <div>
               <h2>Oyuncu ve Eczane</h2>
@@ -159,10 +165,10 @@ export function StartScreen({ onStart }: StartScreenProps) {
             </label>
           </div>
 
-          <button className="primary-button setup-start-button" onClick={start}>
+          <button className="primary-button setup-start-button" type="submit">
             Oyunu kur ve başlat
           </button>
-        </div>
+        </form>
 
         <aside className="setup-preview">
           <h2>{pharmacyName || "Eczane adı"}</h2>
